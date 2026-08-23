@@ -14,6 +14,7 @@ class Order(Base):
     order_number: Mapped[str] = mapped_column(String, nullable=False)
     sla_due_date: Mapped[date] = mapped_column(Date, nullable=False)
     position: Mapped[float] = mapped_column(Float, nullable=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     pallets: Mapped[list["Pallet"]] = relationship(back_populates="order", cascade="all, delete-orphan")

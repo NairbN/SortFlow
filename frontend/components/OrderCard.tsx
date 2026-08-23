@@ -54,7 +54,7 @@ export function OrderCard({ order }: { order: Order }) {
         <p className="font-semibold">{order.client_name}</p>
         <p className="text-sm text-zinc-500">Order #{order.order_number}</p>
         <p className="text-sm text-zinc-500">
-          Pallets: {order.pallets.map((p) => p.pallet_id).join(", ") || "—"}
+          {order.pallets.length} pallet{order.pallets.length === 1 ? "" : "s"}
         </p>
       </div>
       <div className="text-right">

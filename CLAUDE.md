@@ -15,8 +15,10 @@ Secondary (lower priority, "nice to have" polish) problems:
 
 ## How the real warehouse operation works (background context)
 
-- Pallets arrive and get a pallet ID like `PLT-00001`, then get racked at a location like `CA01-RCK01`.
+- Pallets arrive and get a pallet ID, then get racked at a location like `CA01-RCK01`.
 - Orders are prioritized by an SLA due date; an order can span multiple pallets.
+
+**ID format convention:** `order_number` is `ORD-00000` (five digits). Inbound `pallet_id` is `PLT-0000000` (seven digits). Outbound pallet numbers (once that tool is built) are `OPLT-000000` (six digits). These are free-text fields (no backend validation enforcing the pattern), so this is a convention for seed data and manual entry, not a hard constraint.
 - The sort team pulls pallets by order, unpacks them, and scans each asset to either an **outbound pallet** (commodity/recycling, grouped by category) or a **pending-wipe rack** (data-bearing/valuable items, headed to the audit team).
 - Outbound pallets are per-category (e.g. laptops, wires, printers). Most categories have a fixed rack location that persists across pallet swaps. One exception: a shared "CA commodity" floor area with no rack, used by several categories.
 - Audit team (not in scope for this app) handles grading, wiping, and staging for resale or teardown.
@@ -34,7 +36,7 @@ Three tools, each independent/modular (not one monolithic app):
    - Work queue view, default sorted by earliest due date
    - Manual reordering via **drag-and-drop**, open to anyone on the sort team (no role restrictions in v1)
    - Manual order **persists** for everyone until someone drags again — it does not auto-revert to SLA-date sort
-   - No completion tracking in v1 (that's a "nice to have," possibly gamified, for later — not core)
+   - **Pallet Kanban board** (in scope as of the second build pass — originally deferred, pulled forward): each pallet carries a status — `backlog` → `staged` → `in_progress` → `completed` — shown as one global Kanban board across all active orders. Only the #1 order's `backlog` pallets auto-promote to `staged`; if an order loses the #1 spot, its still-`staged`-and-untouched pallets revert to `backlog` (pallets already `in_progress`/`completed` are never touched by this). When every pallet on an order reaches `completed`, the order is soft-archived (`archived_at` set) and disappears from both the SLA queue and the Kanban board. Sorters can drag any pallet card to any column at any time — the auto-staging just sets a sensible default, it doesn't lock anything.
 2. **Outbound pallet board**
    - Shows the current active outbound pallet number per category, plus its rack location
    - Categories are **configurable**, not hardcoded (list includes things like laptops, monitors, AIOs, keyboards/mice, printers, AC adapters, wires, ethernet, steel, misc e-waste, toner, docking stations, telephones, etc.)
@@ -73,12 +75,16 @@ backend/
 │   │   ├── order.py
 │   │   ├── pallet.py
 │   │   └── outbound_category.py
+│   ├── staging.py
 │   └── routers/
 │       ├── orders.py
-│       └── outbound_categories.py
+│       ├── outbound_categories.py
+│       └── pallets.py
 ├── Dockerfile
 ├── requirements.txt
 ```
+
+`staging.py` is a deliberate, narrow exception to the one-router-per-tool rule: pallet staging is defined entirely in terms of SLA queue priority, so `sync_staging()` is shared by both the `orders` and `pallets` routers rather than duplicated. It's the only cross-tool coupling in the backend.
 
 ## Database schema (v1)
 
@@ -89,6 +95,7 @@ CREATE TABLE orders (
     order_number TEXT NOT NULL,
     sla_due_date DATE NOT NULL,
     position FLOAT NOT NULL,       -- sort key for drag-and-drop reordering
+    archived_at TIMESTAMPTZ,       -- set when every pallet on the order is completed; NULL = active
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -97,6 +104,7 @@ CREATE TABLE pallets (
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     pallet_id TEXT NOT NULL UNIQUE,
     rack_location TEXT,
+    status TEXT NOT NULL DEFAULT 'backlog',  -- backlog | staged | in_progress | completed
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -115,5 +123,7 @@ Note on `position`: uses a float "sort key" approach rather than sequential inte
 
 - Repo scaffolded: Next.js frontend, FastAPI backend, Docker Compose for backend + local Postgres — all confirmed working locally (`/health` endpoint returns OK).
 - `.gitignore` in place (excludes `venv/`, `node_modules/`, `.next/`, `.env*`).
-- Initial scaffold committed and pushed to `github.com/NairbN/SortFlow`.
-- **Next step**: build out the SQLAlchemy models, Pydantic schemas, and FastAPI routers for the Orders/SLA queue tool first (flagship feature), then the outbound categories tool.
+- Backend done: Orders/SLA queue (models, schemas, router, drag-and-drop reorder), outbound pallet board, and the pallet Kanban/staging system (models, schemas, `staging.py`, `pallets` router) — all verified against real Postgres via curl, including the full auto-stage/revert/archive cascade.
+- Frontend: SLA queue page done (order form, drag-and-drop queue, verified in a real browser) at `/`. Pallet Kanban board page not yet built.
+- No Alembic — schema changes to already-existing local tables need a manual `ALTER TABLE` (done once for `pallets.status` and `orders.archived_at`); `Base.metadata.create_all()` only creates missing tables, never alters existing ones.
+- **Next step**: build the pallet Kanban board frontend page (`/pallets` or similar), then the outbound pallet board frontend, then the floor map view.

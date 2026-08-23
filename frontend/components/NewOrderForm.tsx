@@ -47,16 +47,19 @@ export function NewOrderForm() {
         />
         <input
           name="order_number"
-          placeholder="Order number"
+          placeholder="Order number (e.g. ORD-00001)"
           required
           className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
         />
-        <input
-          name="sla_due_date"
-          type="date"
-          required
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-        />
+        <label className="flex flex-col gap-1 text-xs text-zinc-500">
+          SLA due date
+          <input
+            name="sla_due_date"
+            type="date"
+            required
+            className="rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          />
+        </label>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -64,7 +67,7 @@ export function NewOrderForm() {
           <div key={row.key} className="flex gap-2">
             <input
               name="pallet_id"
-              placeholder="Pallet ID (e.g. PLT-00001)"
+              placeholder="Pallet ID (e.g. PLT-0000001)"
               required
               className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
             />

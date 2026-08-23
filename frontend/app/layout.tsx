@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -23,7 +24,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <nav className="flex gap-4 border-b border-zinc-200 px-6 py-3 text-sm font-medium dark:border-zinc-800">
+          <Link href="/" className="hover:underline">
+            SLA Queue
+          </Link>
+          <Link href="/pallets" className="hover:underline">
+            Pallet Board
+          </Link>
+        </nav>
+        {children}
+      </body>
     </html>
   );
 }

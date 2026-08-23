@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import type { PalletStatus } from "./types";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
@@ -58,6 +59,23 @@ export async function reorderOrder(
 
   if (!res.ok) {
     throw new Error(`Failed to reorder order: ${res.status}`);
+  }
+
+  refresh();
+}
+
+export async function updatePalletStatus(
+  palletId: number,
+  status: PalletStatus
+) {
+  const res = await fetch(`${BACKEND_URL}/pallets/${palletId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to update pallet status: ${res.status}`);
   }
 
   refresh();

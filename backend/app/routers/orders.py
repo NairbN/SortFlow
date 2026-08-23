@@ -6,17 +6,25 @@ from app.database import get_db
 from app.models.order import Order
 from app.models.pallet import Pallet
 from app.schemas.order import OrderCreate, OrderRead, OrderReorder
+from app.staging import sync_staging
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 @router.get("", response_model=list[OrderRead])
 def list_orders(db: Session = Depends(get_db)):
-    orders = db.scalars(select(Order).order_by(Order.position)).all()
+    orders = db.scalars(
+        select(Order).where(Order.archived_at.is_(None)).order_by(Order.position)
+    ).all()
     return orders
 
 @router.post("", response_model=OrderRead, status_code=201)
 def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
-    max_position = db.scalar(select(Order.position).order_by(Order.position.desc()).limit(1))
+    max_position = db.scalar(
+        select(Order.position)
+        .where(Order.archived_at.is_(None))
+        .order_by(Order.position.desc())
+        .limit(1)
+    )
     new_position = (max_position or 0) + 1
 
     order = Order(
@@ -29,6 +37,8 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     db.add(order)
     db.commit()
     db.refresh(order)
+    sync_staging(db)
+    db.refresh(order)
     return order
 
 @router.delete("/{order_id}", status_code=204)
@@ -38,6 +48,7 @@ def delete_order(order_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Order not found")
     db.delete(order)
     db.commit()
+    sync_staging(db)
 
 @router.patch("/{order_id}/reorder", response_model=OrderRead)
 def reorder_order(order_id: int, payload: OrderReorder, db: Session = Depends(get_db)):
@@ -69,5 +80,7 @@ def reorder_order(order_id: int, payload: OrderReorder, db: Session = Depends(ge
         order.position = 0
 
     db.commit()
+    db.refresh(order)
+    sync_staging(db)
     db.refresh(order)
     return order

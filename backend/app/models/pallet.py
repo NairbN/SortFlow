@@ -13,6 +13,7 @@ class Pallet(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
     pallet_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     rack_location: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default="backlog")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     order: Mapped["Order"] = relationship(back_populates="pallets")
