@@ -1,0 +1,11 @@
+{
+  "name": "sortflow",
+  "private": true,
+  "scripts": {
+    "dev": "docker-compose up -d && npm run dev --prefix frontend",
+    "down": "docker-compose down",
+    "logs": "docker-compose logs -f backend",
+    "seed": "backend/scripts/seed.sh",
+    "test:backend": "docker-compose exec backend pytest -v"
+  }
+}

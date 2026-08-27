@@ -1,4 +1,6 @@
 annotated-doc==0.0.5
+httpx
+pytest
 annotated-types==0.8.0
 anyio==4.14.2
 click==8.4.2
