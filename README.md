@@ -10,14 +10,14 @@ It's a solo portfolio project built against a real workplace's actual workflow (
 
 ## See it in action
 
-![Full SortFlow walkthrough: reprioritizing the SLA queue, watching pallet staging cascade automatically, protecting in-progress work from reprioritization, and an order disappearing once every pallet is completed](docs/demo-full-walkthrough.gif)
+![Full SortFlow walkthrough: reprioritizing the SLA queue, watching pallet staging cascade automatically, and protecting in-progress work from reprioritization](docs/demo-full-walkthrough.gif)
 
 This is the whole loop end to end, captured against the app actually running (not mocked):
 1. A low-urgency order gets dragged to the top of the SLA queue, overriding the default due-date sort
-2. Switching to the Pallet Board shows that order's pallets auto-staged themselves, while the order that lost the #1 spot has its untouched pallets fall back to Backlog
+2. Clicking over to the Pallet Board shows that order's pallets auto-staged themselves, while the order that lost the #1 spot has its untouched pallets fall back to Backlog
 3. A sorter drags one of those newly-staged pallets into In Progress
 4. Back in the SLA queue, the original top order reclaims #1 — and back on the Pallet Board, the pallet already In Progress **stays exactly where it is**, while the other still-staged pallet reverts to Backlog. Reprioritizing never disturbs work someone's already started.
-5. Completing an order's last pallet archives it instantly — it vanishes from both the SLA queue and the Pallet Board, no manual cleanup
+5. A sorter finishes a pallet and drags it into Completed — it stays put and the order stays active, since it still has another pallet outstanding. (Complete every pallet on an order and the order archives itself off both boards automatically — not shown in the clip above, but see the Pallet Kanban Board section below.)
 
 ## What's implemented
 
