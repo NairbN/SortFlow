@@ -8,6 +8,17 @@ Right now, one person on the sort team manually tracks incoming orders and their
 
 It's a solo portfolio project built against a real workplace's actual workflow (seeded/fake data only, no real company data), with the eventual goal of pitching something like it internally once it's proven out. It's explicitly an **accessory app** — it complements the sort team's existing scanning/tracking system rather than replacing it, and it's scoped to the sort team only (not the downstream audit team).
 
+## See it in action
+
+![Full SortFlow walkthrough: reprioritizing the SLA queue, watching pallet staging cascade automatically, protecting in-progress work from reprioritization, and an order disappearing once every pallet is completed](docs/demo-full-walkthrough.gif)
+
+This is the whole loop end to end, captured against the app actually running (not mocked):
+1. A low-urgency order gets dragged to the top of the SLA queue, overriding the default due-date sort
+2. Switching to the Pallet Board shows that order's pallets auto-staged themselves, while the order that lost the #1 spot has its untouched pallets fall back to Backlog
+3. A sorter drags one of those newly-staged pallets into In Progress
+4. Back in the SLA queue, the original top order reclaims #1 — and back on the Pallet Board, the pallet already In Progress **stays exactly where it is**, while the other still-staged pallet reverts to Backlog. Reprioritizing never disturbs work someone's already started.
+5. Completing an order's last pallet archives it instantly — it vanishes from both the SLA queue and the Pallet Board, no manual cleanup
+
 ## What's implemented
 
 **SLA Queue** (`/`) — the flagship feature.
