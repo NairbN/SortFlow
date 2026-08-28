@@ -2,14 +2,8 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { daysUntilDue, dueLabel, dueLabelClass } from "@/lib/dates";
 import type { Order } from "@/lib/types";
-
-function daysUntilDue(dateStr: string) {
-  const due = new Date(`${dateStr}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((due.getTime() - today.getTime()) / 86_400_000);
-}
 
 export function OrderCard({ order }: { order: Order }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -30,18 +24,6 @@ export function OrderCard({ order }: { order: Order }) {
       ? "border-amber-400 dark:border-amber-500"
       : "border-zinc-200 dark:border-zinc-700";
 
-  const dueLabel = isOverdue
-    ? `${Math.abs(daysLeft)}d overdue`
-    : daysLeft === 0
-      ? "Due today"
-      : `${daysLeft}d left`;
-
-  const dueLabelClass = isOverdue
-    ? "text-red-600 dark:text-red-400"
-    : isUrgent
-      ? "text-amber-600 dark:text-amber-400"
-      : "text-zinc-400";
-
   return (
     <li
       ref={setNodeRef}
@@ -59,7 +41,7 @@ export function OrderCard({ order }: { order: Order }) {
       </div>
       <div className="text-right">
         <p className="text-sm font-medium">{order.sla_due_date}</p>
-        <p className={`text-xs ${dueLabelClass}`}>{dueLabel}</p>
+        <p className={`text-xs ${dueLabelClass(daysLeft)}`}>{dueLabel(daysLeft)}</p>
       </div>
     </li>
   );

@@ -2,6 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { daysUntilDue, dueLabel, dueLabelClass } from "@/lib/dates";
 import type { BoardPallet } from "@/lib/types";
 
 export function KanbanCard({ pallet }: { pallet: BoardPallet }) {
@@ -11,6 +12,8 @@ export function KanbanCard({ pallet }: { pallet: BoardPallet }) {
   const style = {
     transform: CSS.Translate.toString(transform),
   };
+
+  const daysLeft = daysUntilDue(pallet.order.sla_due_date);
 
   return (
     <div
@@ -26,6 +29,9 @@ export function KanbanCard({ pallet }: { pallet: BoardPallet }) {
       {pallet.rack_location && (
         <p className="text-xs text-zinc-400">{pallet.rack_location}</p>
       )}
+      <p className={`text-xs font-medium ${dueLabelClass(daysLeft)}`}>
+        {dueLabel(daysLeft)}
+      </p>
     </div>
   );
 }
