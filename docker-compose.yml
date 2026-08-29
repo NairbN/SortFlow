@@ -12,10 +12,15 @@ services:
 
   backend:
     build: ./backend
+    # --reload here is local-dev-only (paired with the bind mount below);
+    # the image's own CMD omits it since a production host runs the image
+    # as-is, unaware of this compose file.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://sortflow:sortflow@db:5432/sortflow
+      BACKEND_API_KEY: dev-local-api-key
     depends_on:
       - db
     volumes:

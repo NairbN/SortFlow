@@ -7,6 +7,11 @@ import tempfile
 _test_db_fd, _test_db_path = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_test_db_path}"
 
+# app/auth.py also reads an env var at import time (same reasoning as
+# DATABASE_URL above) - set a fixed test value so import doesn't crash.
+TEST_API_KEY = "test-api-key"
+os.environ["BACKEND_API_KEY"] = TEST_API_KEY
+
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -42,5 +47,7 @@ def db_session():
 
 @pytest.fixture()
 def client():
-    with TestClient(app) as test_client:
+    # Every route except /health requires this header now (see app/auth.py)
+    # - set it once here so existing tests don't each need updating.
+    with TestClient(app, headers={"X-API-Key": TEST_API_KEY}) as test_client:
         yield test_client

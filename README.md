@@ -40,6 +40,7 @@ Both pages talk to a FastAPI backend backed by Postgres, and both have been manu
 | Frontend | Next.js (TypeScript, Tailwind, App Router) |
 | Backend | FastAPI |
 | Database | Postgres (Docker Compose locally; Supabase in production) |
+| Backend hosting | Docker Compose locally; [Railway](https://railway.app) in production |
 | Drag-and-drop | [@dnd-kit](https://dndkit.com/) |
 | Testing | pytest (backend) |
 | Orchestration | Docker + Docker Compose — deliberately no Kubernetes, overkill for this scale |
@@ -58,7 +59,10 @@ cd SortFlow
 Create `frontend/.env.local`:
 ```
 BACKEND_URL=http://localhost:8000
+SITE_PASSWORD=<pick a password>
+BACKEND_API_KEY=dev-local-api-key
 ```
+`SITE_PASSWORD` gates the whole app behind a single shared password (no per-user accounts) — you'll land on `/login` until you enter it. `BACKEND_API_KEY` is a separate, service-to-service secret the frontend sends on every backend request; its value must match `BACKEND_API_KEY` in `docker-compose.yml` (already set to `dev-local-api-key` there for local dev — change both together if you customize it).
 
 Install frontend dependencies, then start everything with one command from the repo root:
 ```bash
@@ -74,6 +78,23 @@ npm run test:backend  # run the backend test suite
 npm run logs           # tail backend logs
 npm run down           # stop the backend + database containers
 ```
+
+## Deployment
+
+Target stack: **Vercel** (frontend) + **Railway** (backend) + **Supabase** (Postgres). Same codebase as local dev — only the env vars change, since both frontend and backend already read connection details from environment variables rather than hardcoding `localhost`.
+
+1. **Supabase** — create a project, then grab the Postgres connection string from Settings → Database → Connection string (URI format). `Base.metadata.create_all()` runs automatically on backend startup and creates the schema on a fresh database, so no manual migration step is needed for a first deploy.
+2. **Railway** — create a service from this GitHub repo with the root directory set to `backend/`; Railway detects the `Dockerfile` automatically. Set two env vars:
+   - `DATABASE_URL` — the Supabase connection string from step 1
+   - `BACKEND_API_KEY` — a long random secret (e.g. `openssl rand -hex 32`), **not** the `dev-local-api-key` value used locally
+
+   Railway injects its own `PORT` env var at runtime; the Dockerfile's `CMD` already binds to it (falling back to `8000` when unset, which is what local `docker-compose` uses). After the first deploy, note the public Railway URL — the frontend needs it next.
+3. **Vercel** — import this repo with the root directory set to `frontend/`. Set:
+   - `BACKEND_URL` — the Railway URL from step 2
+   - `BACKEND_API_KEY` — must match Railway's value from step 2 exactly, or every backend request gets a 401
+   - `SITE_PASSWORD` — a real password, not the `sortflow-dev` value used locally
+
+None of these three secrets should reuse their local-dev values in production — pick new ones for `BACKEND_API_KEY` and `SITE_PASSWORD` when deploying.
 
 ## Testing
 
@@ -108,8 +129,7 @@ The backend is deliberately modular — each tool (SLA queue, pallet Kanban, and
 
 - **Model lookup tool** — an AI agent that looks up an unfamiliar asset's model number and determines whether it's above or below the resale cutline, grounded in the team's actual cutline spreadsheet and reference documents. Currently being scoped as a Microsoft Copilot Studio agent rather than in-repo code, so it won't show up in this codebase directly.
 - An **outbound pallet board + warehouse floor map** were previously built (including an interactive pan/zoom floor plan) and then deliberately reverted — not pursued for now. If revisited, it'll be re-scoped from scratch rather than restored from git history.
-- No authentication yet. The plan is a simple shared password gate rather than per-user accounts, since the whole team is meant to see and edit the same shared state.
-- No production deployment yet (planned: Vercel for the frontend, Supabase for Postgres).
+- No production deployment yet — see [Deployment](#deployment) above for the target stack (Vercel + Railway + Supabase) and setup steps.
 
 ## License
 

@@ -1,9 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { backendFetch } from "./backend";
 import type { PalletStatus } from "./types";
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function createOrder(formData: FormData) {
   const clientName = String(formData.get("client_name") ?? "").trim();
@@ -25,7 +24,7 @@ export async function createOrder(formData: FormData) {
     throw new Error("Missing required fields");
   }
 
-  const res = await fetch(`${BACKEND_URL}/orders`, {
+  const res = await backendFetch("/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -48,7 +47,7 @@ export async function reorderOrder(
   previousOrderId: number | null,
   nextOrderId: number | null
 ) {
-  const res = await fetch(`${BACKEND_URL}/orders/${orderId}/reorder`, {
+  const res = await backendFetch(`/orders/${orderId}/reorder`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -68,7 +67,7 @@ export async function updatePalletStatus(
   palletId: number,
   status: PalletStatus
 ) {
-  const res = await fetch(`${BACKEND_URL}/pallets/${palletId}/status`, {
+  const res = await backendFetch(`/pallets/${palletId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),

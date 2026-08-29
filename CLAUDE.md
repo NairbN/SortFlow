@@ -47,10 +47,12 @@ This is explicitly an **accessory app** — it complements the sort team's exist
 ## Tech stack
 
 - **Frontend**: Next.js (TypeScript, Tailwind, App Router), deployed on Vercel
-- **Backend**: FastAPI, containerized with Docker
+- **Backend**: FastAPI, containerized with Docker, deployed on Railway in production (chosen for being Docker-native — it deploys the existing `Dockerfile` as-is with no platform-specific rewrite)
 - **Database**: Postgres — Supabase in production (also gives realtime updates), plain Postgres via Docker Compose for local dev. Same connection-string-based setup for both; swap the `DATABASE_URL` env var between environments.
 - **Local dev**: Docker Compose runs the backend + local Postgres. The Next.js frontend runs locally via `npm run dev` (NOT Dockerized — would slow down hot reload for no benefit).
-- **Auth**: No per-user accounts in v1. Simple shared password gate instead.
+- **Auth**: No per-user accounts in v1. Two layers, both shared secrets (not per-user):
+  - **Frontend**: `frontend/proxy.ts` (Next 16's renamed `middleware.ts`; defaults to the Node.js runtime, not Edge-only) gates every route except `/login`. Session is a cookie holding a SHA-256 hash of the shared `SITE_PASSWORD` env var (not the plaintext password), checked against a freshly-computed hash on every request — no session store needed.
+  - **Backend**: `backend/app/auth.py`'s `require_api_key` dependency, applied per-router at the `include_router()` call in `main.py` (not app-wide), so `/health` stays exempt without special-casing. Checks an `X-API-Key` header against `BACKEND_API_KEY` via `hmac.compare_digest` (constant-time, avoids timing attacks). The browser never calls the backend directly — every request comes from the Next.js server via `frontend/lib/backend.ts`'s `backendFetch()` wrapper, which attaches the header automatically — so this is service-to-service auth, not a second user-facing login. `backend/scripts/seed.sh` also needs this header since it talks to the API directly.
 - **Orchestration**: Docker + Docker Compose only. No Kubernetes — deliberately decided against it as overkill for this project's scale.
 
 ## Design principle: modularity
@@ -62,6 +64,7 @@ backend/
 ├── app/
 │   ├── main.py
 │   ├── database.py
+│   ├── auth.py
 │   ├── models/
 │   │   ├── order.py
 │   │   └── pallet.py
@@ -74,14 +77,16 @@ backend/
 │       └── pallets.py
 ├── tests/
 │   ├── conftest.py
+│   ├── test_auth.py
 │   ├── test_orders.py
 │   ├── test_pallets.py
 │   └── test_staging.py
+├── scripts/seed.sh
 ├── Dockerfile
 ├── requirements.txt
 ```
 
-`staging.py` is a deliberate, narrow exception to the one-router-per-tool rule: pallet staging is defined entirely in terms of SLA queue priority, so `sync_staging()` is shared by both the `orders` and `pallets` routers rather than duplicated. It's the only cross-tool coupling in the backend.
+`staging.py` is a deliberate, narrow exception to the one-router-per-tool rule: pallet staging is defined entirely in terms of SLA queue priority, so `sync_staging()` is shared by both the `orders` and `pallets` routers rather than duplicated. It's the only cross-tool coupling in the backend. `auth.py` is a similar cross-cutting exception, applied at the `include_router()` call sites in `main.py` rather than baked into each router.
 
 ## Database schema (v1)
 
@@ -112,7 +117,8 @@ Note on `position`: uses a float "sort key" approach rather than sequential inte
 
 - Backend: pytest, in `backend/tests/`. Run via `npm run test:backend` (wraps `docker-compose exec backend pytest`) — the backend container must already be up.
 - `conftest.py` points `DATABASE_URL` at a throwaway temp-file SQLite DB *before* any `app.*` module is imported (import order matters — `app/database.py` reads the env var at import time), so tests never touch the real Postgres data. A `reset_db` autouse fixture drops/recreates all tables before every test for isolation. SQLite foreign-key enforcement is off by default, so a `PRAGMA foreign_keys=ON` connect listener is registered to make cascade-delete behavior match Postgres.
-- `test_staging.py` unit-tests `sync_staging()` directly (no HTTP layer) — the auto-stage/revert/archive rules. `test_orders.py` / `test_pallets.py` go through the real FastAPI routes via `TestClient`, including a regression test for a bug found during manual testing (an archived order's `position` used to leak into new orders' position math).
+- `test_staging.py` unit-tests `sync_staging()` directly (no HTTP layer) — the auto-stage/revert/archive rules. `test_orders.py` / `test_pallets.py` go through the real FastAPI routes via `TestClient`, including a regression test for a bug found during manual testing (an archived order's `position` used to leak into new orders' position math). `test_auth.py` covers the `X-API-Key` gate.
+- `conftest.py` also sets `BACKEND_API_KEY` before imports (same reasoning as `DATABASE_URL`) and the `client` fixture's `TestClient` is constructed with that key as a default header, so existing tests didn't each need updating when the backend auth gate was added.
 - No frontend test setup yet (no framework installed) — UI changes are still verified manually via a real browser (Playwright-driven Chrome) rather than automated tests.
 
 ## Current status
@@ -122,5 +128,7 @@ Note on `position`: uses a float "sort key" approach rather than sequential inte
 - Backend done: Orders/SLA queue (models, schemas, router, drag-and-drop reorder) and the pallet Kanban/staging system (models, schemas, `staging.py`, `pallets` router) — verified against real Postgres via curl, including the full auto-stage/revert/archive cascade. Covered by pytest (see Testing above).
 - Frontend done: SLA queue page (order form, drag-and-drop queue) at `/`, pallet Kanban board at `/pallets` — both verified in a real browser.
 - Outbound pallet board + floor map view were built, then reverted (see Deferred/reverted above) — not present in the current codebase.
-- No Alembic — schema changes to already-existing local tables need a manual `ALTER TABLE` (done once for `pallets.status` and `orders.archived_at`); `Base.metadata.create_all()` only creates missing tables, never alters existing ones.
-- **Next step**: none of Version 1's remaining scope is currently planned — check with the user before starting new feature work.
+- Auth done: frontend password gate + backend API key (see Tech stack above). Frontend routes live under `app/(app)/` (has the nav + logout) as a route group separate from `app/login/` (no nav) — needed because rendering the logout button unconditionally on `/login` created a real bug (an ambiguous second `type="submit"` button on the page), not just a cosmetic issue.
+- No Alembic — schema changes to already-existing local tables need a manual `ALTER TABLE` (done once for `pallets.status` and `orders.archived_at`); `Base.metadata.create_all()` only creates missing tables, never alters existing ones. On a brand-new Supabase database this isn't an issue — `create_all()` bootstraps the full schema on first backend startup with nothing pre-existing to migrate.
+- Deployment prep done: `backend/Dockerfile`'s `CMD` runs without `--reload` (dev-only) and binds to Railway's injected `$PORT` (shell-form CMD so the env var expands, falling back to `8000` when unset). `docker-compose.yml` overrides `command:` locally to add `--reload` back, paired with its existing `./backend:/app` bind mount — the image itself stays production-safe. Concrete deploy steps (Supabase → Railway → Vercel, env vars per environment) are in README's Deployment section, not duplicated here.
+- **Next step**: none of Version 1's remaining scope is currently planned — check with the user before starting new feature work. The app has not actually been deployed yet — README's Deployment section documents the steps, but no one has run through them.

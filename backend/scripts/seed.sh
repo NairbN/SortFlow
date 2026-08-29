@@ -10,6 +10,7 @@
 set -euo pipefail
 
 API="${API:-http://localhost:8000}"
+API_KEY="${API_KEY:-dev-local-api-key}"
 PY=$(command -v python3 >/dev/null 2>&1 && echo python3 || echo python)
 
 echo "Clearing existing orders (including archived - via SQL, not the API, since"
@@ -21,6 +22,7 @@ create_order() {
   local client_name="$1" order_number="$2" sla_due_date="$3" pallets_json="$4"
   curl -s -X POST "$API/orders" \
     -H "Content-Type: application/json" \
+    -H "X-API-Key: $API_KEY" \
     -d "{\"client_name\":\"$client_name\",\"order_number\":\"$order_number\",\"sla_due_date\":\"$sla_due_date\",\"pallets\":$pallets_json}" \
     -o /dev/null -w "  %{http_code} %{url_effective}\n"
 }
@@ -43,4 +45,4 @@ create_order "Ashford Legal" "ORD-00005" "2026-09-10" \
   '[{"pallet_id":"PLT-0000007","rack_location":null},{"pallet_id":"PLT-0000008","rack_location":null},{"pallet_id":"PLT-0000009","rack_location":"CA01-RCK01"}]'
 
 echo "Done. Current queue:"
-curl -s "$API/orders" | "$PY" -m json.tool
+curl -s -H "X-API-Key: $API_KEY" "$API/orders" | "$PY" -m json.tool
