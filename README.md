@@ -8,6 +8,8 @@ Right now, one person on the sort team manually tracks incoming orders and their
 
 It's a solo portfolio project built against a real workplace's actual workflow (seeded/fake data only, no real company data), with the eventual goal of pitching something like it internally once it's proven out. It's explicitly an **accessory app** — it complements the sort team's existing scanning/tracking system rather than replacing it, and it's scoped to the sort team only (not the downstream audit team).
 
+**Live demo:** [frontend-kappa-eight-94.vercel.app](https://frontend-kappa-eight-94.vercel.app) — password `PaloAlto`. Seeded/fake data only.
+
 ## See it in action
 
 ![Full SortFlow walkthrough: reprioritizing the SLA queue, watching pallet staging cascade automatically, and protecting in-progress work from reprioritization](docs/demo-full-walkthrough.gif)
@@ -83,10 +85,11 @@ npm run down           # stop the backend + database containers
 
 Target stack: **Vercel** (frontend) + **Railway** (backend) + **Supabase** (Postgres). Same codebase as local dev — only the env vars change, since both frontend and backend already read connection details from environment variables rather than hardcoding `localhost`.
 
-1. **Supabase** — create a project, then grab the Postgres connection string from Settings → Database → Connection string (URI format). `Base.metadata.create_all()` runs automatically on backend startup and creates the schema on a fresh database, so no manual migration step is needed for a first deploy.
-2. **Railway** — create a service from this GitHub repo with the root directory set to `backend/`; Railway detects the `Dockerfile` automatically. Set two env vars:
+1. **Supabase** — create a project, then grab the Postgres connection string from Settings → Database → Connection string (URI format). Schema is managed by Alembic (`backend/alembic/`), which runs automatically (`alembic upgrade head`) before the app starts — no manual migration step needed for a first deploy against a fresh database, and future schema changes ship the same way.
+2. **Railway** — create a service from this GitHub repo with the root directory set to `backend/`; Railway detects the `Dockerfile` automatically. Set three env vars:
    - `DATABASE_URL` — the Supabase connection string from step 1
    - `BACKEND_API_KEY` — a long random secret (e.g. `openssl rand -hex 32`), **not** the `dev-local-api-key` value used locally
+   - `ENVIRONMENT=production` — turns off the public `/docs`, `/redoc`, and `/openapi.json` routes (left on by default for local dev)
 
    Railway injects its own `PORT` env var at runtime; the Dockerfile's `CMD` already binds to it (falling back to `8000` when unset, which is what local `docker-compose` uses). After the first deploy, note the public Railway URL — the frontend needs it next.
 3. **Vercel** — import this repo with the root directory set to `frontend/`. Set:
@@ -129,7 +132,6 @@ The backend is deliberately modular — each tool (SLA queue, pallet Kanban, and
 
 - **Model lookup tool** — an AI agent that looks up an unfamiliar asset's model number and determines whether it's above or below the resale cutline, grounded in the team's actual cutline spreadsheet and reference documents. Currently being scoped as a Microsoft Copilot Studio agent rather than in-repo code, so it won't show up in this codebase directly.
 - An **outbound pallet board + warehouse floor map** were previously built (including an interactive pan/zoom floor plan) and then deliberately reverted — not pursued for now. If revisited, it'll be re-scoped from scratch rather than restored from git history.
-- No production deployment yet — see [Deployment](#deployment) above for the target stack (Vercel + Railway + Supabase) and setup steps.
 
 ## License
 

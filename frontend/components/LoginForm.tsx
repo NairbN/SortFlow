@@ -28,7 +28,9 @@ export function LoginForm() {
       />
       {state.error && (
         <p className="text-sm text-red-600 dark:text-red-400">
-          Incorrect password.
+          {state.rateLimited
+            ? "Too many attempts. Wait a minute and try again."
+            : "Incorrect password."}
         </p>
       )}
       <button

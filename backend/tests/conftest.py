@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, SessionLocal, engine
 from app.main import app
+from app.rate_limit import reset as reset_rate_limit
 
 
 @event.listens_for(Engine, "connect")
@@ -33,6 +34,14 @@ def reset_db():
     """Give every test a clean set of tables, regardless of test order."""
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Every TestClient shares the same fake client IP, so failed-attempt
+    counts from one test would otherwise bleed into the next."""
+    reset_rate_limit()
     yield
 
 

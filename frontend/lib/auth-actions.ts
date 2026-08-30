@@ -1,18 +1,27 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { checkPassword, expectedSessionToken, SESSION_COOKIE_NAME } from "./auth";
+import { isRateLimited, recordFailedAttempt } from "./rate-limit";
 
-export type LoginState = { error: boolean };
+export type LoginState = { error: boolean; rateLimited?: boolean };
 
 export async function login(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
+  const headerStore = await headers();
+  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+  if (isRateLimited(ip)) {
+    return { error: true, rateLimited: true };
+  }
+
   const password = String(formData.get("password") ?? "");
 
   if (!checkPassword(password)) {
+    recordFailedAttempt(ip);
     return { error: true };
   }
 

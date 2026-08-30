@@ -14,8 +14,9 @@ services:
     build: ./backend
     # --reload here is local-dev-only (paired with the bind mount below);
     # the image's own CMD omits it since a production host runs the image
-    # as-is, unaware of this compose file.
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # as-is, unaware of this compose file. Still runs migrations first, same
+    # as the image's own CMD, so local dev schema always matches the code.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "8000:8000"
     environment:

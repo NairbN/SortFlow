@@ -53,6 +53,8 @@ This is explicitly an **accessory app** — it complements the sort team's exist
 - **Auth**: No per-user accounts in v1. Two layers, both shared secrets (not per-user):
   - **Frontend**: `frontend/proxy.ts` (Next 16's renamed `middleware.ts`; defaults to the Node.js runtime, not Edge-only) gates every route except `/login`. Session is a cookie holding a SHA-256 hash of the shared `SITE_PASSWORD` env var (not the plaintext password), checked against a freshly-computed hash on every request — no session store needed.
   - **Backend**: `backend/app/auth.py`'s `require_api_key` dependency, applied per-router at the `include_router()` call in `main.py` (not app-wide), so `/health` stays exempt without special-casing. Checks an `X-API-Key` header against `BACKEND_API_KEY` via `hmac.compare_digest` (constant-time, avoids timing attacks). The browser never calls the backend directly — every request comes from the Next.js server via `frontend/lib/backend.ts`'s `backendFetch()` wrapper, which attaches the header automatically — so this is service-to-service auth, not a second user-facing login. `backend/scripts/seed.sh` also needs this header since it talks to the API directly.
+- **Rate limiting**: both login paths have a matching best-effort limiter (10 failed attempts/IP/60s, then 429) — `backend/app/rate_limit.py` (in-memory, reliable since Railway runs the backend as one persistent process) and `frontend/lib/rate-limit.ts` (also in-memory, but only best-effort — resets on a Vercel serverless cold start and isn't shared across instances). Backend tests reset the module-level dict via an autouse `reset_rate_limiter` fixture in `conftest.py` so failed-attempt counts (all `TestClient` requests share one fake IP) don't leak between tests.
+- **API docs exposure**: FastAPI's built-in `/docs`, `/redoc`, `/openapi.json` sit outside the `require_api_key` gate (it's per-router, not app-wide) and are publicly reachable by default — not sensitive since the real routes still require the key, but `app/main.py` disables all three when `ENVIRONMENT=production` (unset/anything else = dev, docs stay on). Set `ENVIRONMENT=production` on Railway; local Docker Compose leaves it unset on purpose.
 - **Orchestration**: Docker + Docker Compose only. No Kubernetes — deliberately decided against it as overkill for this project's scale.
 
 ## Design principle: modularity
@@ -65,6 +67,7 @@ backend/
 │   ├── main.py
 │   ├── database.py
 │   ├── auth.py
+│   ├── rate_limit.py
 │   ├── models/
 │   │   ├── order.py
 │   │   └── pallet.py
@@ -81,6 +84,10 @@ backend/
 │   ├── test_orders.py
 │   ├── test_pallets.py
 │   └── test_staging.py
+├── alembic/
+│   ├── env.py
+│   └── versions/
+├── alembic.ini
 ├── scripts/seed.sh
 ├── Dockerfile
 ├── requirements.txt
@@ -129,6 +136,13 @@ Note on `position`: uses a float "sort key" approach rather than sequential inte
 - Frontend done: SLA queue page (order form, drag-and-drop queue) at `/`, pallet Kanban board at `/pallets` — both verified in a real browser.
 - Outbound pallet board + floor map view were built, then reverted (see Deferred/reverted above) — not present in the current codebase.
 - Auth done: frontend password gate + backend API key (see Tech stack above). Frontend routes live under `app/(app)/` (has the nav + logout) as a route group separate from `app/login/` (no nav) — needed because rendering the logout button unconditionally on `/login` created a real bug (an ambiguous second `type="submit"` button on the page), not just a cosmetic issue.
-- No Alembic — schema changes to already-existing local tables need a manual `ALTER TABLE` (done once for `pallets.status` and `orders.archived_at`); `Base.metadata.create_all()` only creates missing tables, never alters existing ones. On a brand-new Supabase database this isn't an issue — `create_all()` bootstraps the full schema on first backend startup with nothing pre-existing to migrate.
+- Migrations via Alembic (`backend/alembic/`), replacing the earlier manual-`ALTER TABLE` approach (previously needed twice, for `pallets.status` and `orders.archived_at`, back when `Base.metadata.create_all()` was the only schema-creation mechanism — it only ever creates missing tables, never alters existing ones). `app/main.py` no longer calls `create_all()` at all; schema is entirely Alembic's responsibility now.
+  - `alembic/env.py` reads `DATABASE_URL` from the same env var as the rest of the app (not a static URL in `alembic.ini`) and points `target_metadata` at `app.database.Base.metadata`, importing `app.models.order`/`app.models.pallet` so their tables register before `--autogenerate` inspects it.
+  - Both `backend/Dockerfile`'s `CMD` and `docker-compose.yml`'s local `command:` run `alembic upgrade head` before starting uvicorn — every boot, not a separate release-phase step. Safe to run unconditionally: `upgrade head` is a no-op once already there, which is what happens on nearly every local dev restart.
+  - The initial migration (`alembic/versions/05fe15b7ee99_*.py`) was autogenerated against a genuinely empty scratch database (not the real dev DB, which already had these tables) to get a clean "create both tables" migration, then the real local dev DB was brought in sync via `alembic stamp head` (marks it as already at that revision without re-running DDL, since its existing tables already matched). A brand-new Supabase database instead runs the migration for real on first Railway boot — verified by pointing the built image at a genuinely fresh Postgres database and confirming it created the schema and served requests correctly.
+  - Going forward, a model change means: edit the model, `docker-compose exec backend alembic revision --autogenerate -m "..."`, review the generated file, commit it. It applies automatically on the next container boot (local and Railway alike).
+  - Tests still use `Base.metadata.create_all()`/`drop_all()` directly against throwaway SQLite (see Testing below) — intentionally bypassing Alembic for speed and isolation; that path doesn't run migrations and never has.
 - Deployment prep done: `backend/Dockerfile`'s `CMD` runs without `--reload` (dev-only) and binds to Railway's injected `$PORT` (shell-form CMD so the env var expands, falling back to `8000` when unset). `docker-compose.yml` overrides `command:` locally to add `--reload` back, paired with its existing `./backend:/app` bind mount — the image itself stays production-safe. Concrete deploy steps (Supabase → Railway → Vercel, env vars per environment) are in README's Deployment section, not duplicated here.
-- **Next step**: none of Version 1's remaining scope is currently planned — check with the user before starting new feature work. The app has not actually been deployed yet — README's Deployment section documents the steps, but no one has run through them.
+- Hardening pass done on top of the base auth: per-IP rate limiting on both login paths and `ENVIRONMENT`-gated API docs (see Auth bullet above under Tech stack). Verified by rebuilding the backend image and hitting a standalone container directly (not just through docker-compose's bind mount) with `ENVIRONMENT=production` set, to confirm the baked-in image behaves correctly and not just the live-reloading dev container.
+- Deployed to production and verified end-to-end (real browser: login → SLA queue page → confirmed it reaches the real Railway backend and Supabase database, not a mock). Frontend on Vercel (`nairbn/frontend` project, GitHub-connected for auto-deploy on push to `main`), backend on Railway (`SortFlow` project, `backend` service, also GitHub-connected), Postgres on Supabase (connected via the session/transaction pooler, not the direct connection string, since this Railway service has no IPv6 egress and Supabase's direct connection is IPv6-only on newer projects). Railway's infra (service config, non-secret env vars) is defined in `.railway/railway.ts` — see the Deployment section in README for the full setup. `railway config plan`/`config apply` have a CLI bug on this Windows/Git-Bash setup where they misread the invoking shell's `_` env var as the Railway executable; workaround is calling `node_modules/@railway/cli/bin/railway.exe` directly instead of the `railway`/`railway.cmd` shims (plain `railway` is fine for every other subcommand).
+- **Next step**: none of Version 1's remaining scope is currently planned — check with the user before starting new feature work.
