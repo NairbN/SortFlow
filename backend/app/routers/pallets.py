@@ -9,6 +9,7 @@ from app.models.order import Order
 from app.models.pallet import Pallet
 from app.schemas.pallet import PalletBoardRead, PalletStatusUpdate
 from app.staging import sync_staging
+from app.ws import manager
 
 router = APIRouter(prefix="/pallets", tags=["pallets"])
 
@@ -50,4 +51,5 @@ def update_pallet_status(
 
     sync_staging(db)
     db.refresh(pallet)
+    manager.notify_changed()
     return pallet

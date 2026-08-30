@@ -7,6 +7,7 @@ from app.models.order import Order
 from app.models.pallet import Pallet
 from app.schemas.order import OrderCreate, OrderRead, OrderReorder
 from app.staging import sync_staging
+from app.ws import manager
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -39,6 +40,7 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     db.refresh(order)
     sync_staging(db)
     db.refresh(order)
+    manager.notify_changed()
     return order
 
 @router.delete("/{order_id}", status_code=204)
@@ -49,6 +51,7 @@ def delete_order(order_id: int, db: Session = Depends(get_db)):
     db.delete(order)
     db.commit()
     sync_staging(db)
+    manager.notify_changed()
 
 @router.patch("/{order_id}/reorder", response_model=OrderRead)
 def reorder_order(order_id: int, payload: OrderReorder, db: Session = Depends(get_db)):
@@ -83,4 +86,5 @@ def reorder_order(order_id: int, payload: OrderReorder, db: Session = Depends(ge
     db.refresh(order)
     sync_staging(db)
     db.refresh(order)
+    manager.notify_changed()
     return order

@@ -37,6 +37,8 @@ Both pages talk to a FastAPI backend backed by Postgres, and both have been manu
 
 **Light/dark mode** — a toggle in the nav and on the login page, defaulting to the system preference and persisting across visits.
 
+**Real-time updates** — the SLA queue and Pallet Board update live for everyone looking at them, not just the person who made the change. A lightweight WebSocket tells connected browsers when something changed; they refetch through the same authenticated path as a normal page load, so no order/pallet data ever travels over that connection itself.
+
 ## Tech stack
 
 | Layer | Choice |
@@ -65,8 +67,9 @@ Create `frontend/.env.local`:
 BACKEND_URL=http://localhost:8000
 SITE_PASSWORD=<pick a password>
 BACKEND_API_KEY=dev-local-api-key
+NEXT_PUBLIC_BACKEND_WS_URL=ws://localhost:8000/ws
 ```
-`SITE_PASSWORD` gates the whole app behind a single shared password (no per-user accounts) — you'll land on `/login` until you enter it. `BACKEND_API_KEY` is a separate, service-to-service secret the frontend sends on every backend request; its value must match `BACKEND_API_KEY` in `docker-compose.yml` (already set to `dev-local-api-key` there for local dev — change both together if you customize it).
+`SITE_PASSWORD` gates the whole app behind a single shared password (no per-user accounts) — you'll land on `/login` until you enter it. `BACKEND_API_KEY` is a separate, service-to-service secret the frontend sends on every backend request; its value must match `BACKEND_API_KEY` in `docker-compose.yml` (already set to `dev-local-api-key` there for local dev — change both together if you customize it). `NEXT_PUBLIC_BACKEND_WS_URL` is the one env var the browser itself reads directly (hence the `NEXT_PUBLIC_` prefix) — it powers real-time updates and doesn't need to match anything else, since it carries no sensitive data.
 
 Install frontend dependencies, then start everything with one command from the repo root:
 ```bash
@@ -98,8 +101,9 @@ Target stack: **Vercel** (frontend) + **Railway** (backend) + **Supabase** (Post
    - `BACKEND_URL` — the Railway URL from step 2
    - `BACKEND_API_KEY` — must match Railway's value from step 2 exactly, or every backend request gets a 401
    - `SITE_PASSWORD` — a real password, not the `sortflow-dev` value used locally
+   - `NEXT_PUBLIC_BACKEND_WS_URL` — the Railway URL from step 2, but as `wss://` instead of `https://` and with `/ws` appended (e.g. `wss://your-app.up.railway.app/ws`)
 
-None of these three secrets should reuse their local-dev values in production — pick new ones for `BACKEND_API_KEY` and `SITE_PASSWORD` when deploying.
+None of `BACKEND_API_KEY`/`SITE_PASSWORD` should reuse their local-dev values in production — pick new ones when deploying. (`NEXT_PUBLIC_BACKEND_WS_URL` isn't a secret — it's sent to every visitor's browser by design.)
 
 ## Testing
 

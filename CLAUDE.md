@@ -48,13 +48,14 @@ This is explicitly an **accessory app** — it complements the sort team's exist
 
 - **Frontend**: Next.js (TypeScript, Tailwind, App Router), deployed on Vercel
 - **Backend**: FastAPI, containerized with Docker, deployed on Railway in production (chosen for being Docker-native — it deploys the existing `Dockerfile` as-is with no platform-specific rewrite)
-- **Database**: Postgres — Supabase in production (also gives realtime updates), plain Postgres via Docker Compose for local dev. Same connection-string-based setup for both; swap the `DATABASE_URL` env var between environments.
+- **Database**: Postgres — Supabase in production, plain Postgres via Docker Compose for local dev. Same connection-string-based setup for both; swap the `DATABASE_URL` env var between environments. (Live updates are handled by a custom WebSocket, not Supabase Realtime — see below; local dev doesn't run real Supabase, so anything Supabase-specific wouldn't work there anyway.)
 - **Local dev**: Docker Compose runs the backend + local Postgres. The Next.js frontend runs locally via `npm run dev` (NOT Dockerized — would slow down hot reload for no benefit).
 - **Auth**: No per-user accounts in v1. Two layers, both shared secrets (not per-user):
   - **Frontend**: `frontend/proxy.ts` (Next 16's renamed `middleware.ts`; defaults to the Node.js runtime, not Edge-only) gates every route except `/login`. Session is a cookie holding a SHA-256 hash of the shared `SITE_PASSWORD` env var (not the plaintext password), checked against a freshly-computed hash on every request — no session store needed.
   - **Backend**: `backend/app/auth.py`'s `require_api_key` dependency, applied per-router at the `include_router()` call in `main.py` (not app-wide), so `/health` stays exempt without special-casing. Checks an `X-API-Key` header against `BACKEND_API_KEY` via `hmac.compare_digest` (constant-time, avoids timing attacks). The browser never calls the backend directly — every request comes from the Next.js server via `frontend/lib/backend.ts`'s `backendFetch()` wrapper, which attaches the header automatically — so this is service-to-service auth, not a second user-facing login. `backend/scripts/seed.sh` also needs this header since it talks to the API directly.
 - **Rate limiting**: both login paths have a matching best-effort limiter (10 failed attempts/IP/60s, then 429) — `backend/app/rate_limit.py` (in-memory, reliable since Railway runs the backend as one persistent process) and `frontend/lib/rate-limit.ts` (also in-memory, but only best-effort — resets on a Vercel serverless cold start and isn't shared across instances). Backend tests reset the module-level dict via an autouse `reset_rate_limiter` fixture in `conftest.py` so failed-attempt counts (all `TestClient` requests share one fake IP) don't leak between tests.
 - **API docs exposure**: FastAPI's built-in `/docs`, `/redoc`, `/openapi.json` sit outside the `require_api_key` gate (it's per-router, not app-wide) and are publicly reachable by default — not sensitive since the real routes still require the key, but `app/main.py` disables all three when `ENVIRONMENT=production` (unset/anything else = dev, docs stay on). Set `ENVIRONMENT=production` on Railway; local Docker Compose leaves it unset on purpose.
+- **Real-time updates**: a custom WebSocket at `backend/app/ws.py`'s `/ws` route, not Supabase Realtime — chosen because Supabase Realtime only works against a real Supabase project (local dev's plain Postgres has no realtime server), and because Vercel's serverless functions can't hold a persistent connection, so a proxy-through-Next.js design wasn't viable either way. The browser connects **directly** to the Railway backend for this one channel (`frontend/components/RealtimeListener.tsx`, using `NEXT_PUBLIC_BACKEND_WS_URL`) — the one deliberate exception to "browser never calls the backend directly." This is safe because the socket carries zero order/pallet data: the backend broadcasts a content-free `"changed"` string whenever `orders`/`pallets` mutate (`ConnectionManager.notify_changed()`, called from each mutating route after its commit), and the frontend's only reaction is `router.refresh()` — the actual data still only ever flows through the existing `BACKEND_API_KEY`-gated REST path. No auth on `/ws` itself as a result; a `MAX_CONNECTIONS` cap (50) is the only abuse guard. Route handlers are sync `def`s, so broadcasting from them needs the event loop captured in `main.py`'s `lifespan` and handed to `asyncio.run_coroutine_threadsafe()` — plain `await` isn't reachable from a thread-pooled sync function.
 - **Orchestration**: Docker + Docker Compose only. No Kubernetes — deliberately decided against it as overkill for this project's scale.
 
 ## Design principle: modularity
@@ -68,6 +69,7 @@ backend/
 │   ├── database.py
 │   ├── auth.py
 │   ├── rate_limit.py
+│   ├── ws.py
 │   ├── models/
 │   │   ├── order.py
 │   │   └── pallet.py
@@ -83,7 +85,8 @@ backend/
 │   ├── test_auth.py
 │   ├── test_orders.py
 │   ├── test_pallets.py
-│   └── test_staging.py
+│   ├── test_staging.py
+│   └── test_ws.py
 ├── alembic/
 │   ├── env.py
 │   └── versions/
@@ -124,7 +127,7 @@ Note on `position`: uses a float "sort key" approach rather than sequential inte
 
 - Backend: pytest, in `backend/tests/`. Run via `npm run test:backend` (wraps `docker-compose exec backend pytest`) — the backend container must already be up.
 - `conftest.py` points `DATABASE_URL` at a throwaway temp-file SQLite DB *before* any `app.*` module is imported (import order matters — `app/database.py` reads the env var at import time), so tests never touch the real Postgres data. A `reset_db` autouse fixture drops/recreates all tables before every test for isolation. SQLite foreign-key enforcement is off by default, so a `PRAGMA foreign_keys=ON` connect listener is registered to make cascade-delete behavior match Postgres.
-- `test_staging.py` unit-tests `sync_staging()` directly (no HTTP layer) — the auto-stage/revert/archive rules. `test_orders.py` / `test_pallets.py` go through the real FastAPI routes via `TestClient`, including a regression test for a bug found during manual testing (an archived order's `position` used to leak into new orders' position math). `test_auth.py` covers the `X-API-Key` gate.
+- `test_staging.py` unit-tests `sync_staging()` directly (no HTTP layer) — the auto-stage/revert/archive rules. `test_orders.py` / `test_pallets.py` go through the real FastAPI routes via `TestClient`, including a regression test for a bug found during manual testing (an archived order's `position` used to leak into new orders' position math). `test_auth.py` covers the `X-API-Key` gate. `test_ws.py` covers `/ws`: that it accepts connections, and that creating an order / updating a pallet status broadcasts `"changed"` to a connected client — verified via `TestClient`'s `websocket_connect()`, which also confirms the sync-route-to-event-loop broadcast bridge (`asyncio.run_coroutine_threadsafe`) actually works under test, not just in a real server.
 - `conftest.py` also sets `BACKEND_API_KEY` before imports (same reasoning as `DATABASE_URL`) and the `client` fixture's `TestClient` is constructed with that key as a default header, so existing tests didn't each need updating when the backend auth gate was added.
 - No frontend test setup yet (no framework installed) — UI changes are still verified manually via a real browser (Playwright-driven Chrome) rather than automated tests.
 
@@ -135,6 +138,7 @@ Note on `position`: uses a float "sort key" approach rather than sequential inte
 - Backend done: Orders/SLA queue (models, schemas, router, drag-and-drop reorder) and the pallet Kanban/staging system (models, schemas, `staging.py`, `pallets` router) — verified against real Postgres via curl, including the full auto-stage/revert/archive cascade. Covered by pytest (see Testing above).
 - Frontend done: SLA queue page (order form, drag-and-drop queue) at `/`, pallet Kanban board at `/pallets` — both verified in a real browser.
 - Light/dark mode done: `next-themes` drives a `.dark` class on `<html>` (Tailwind v4's `@custom-variant dark` in `globals.css`, switched from the default OS-only `prefers-color-scheme` strategy), toggled via `components/ThemeToggle.tsx` in the nav and on the login page. `ThemeToggle` defers its real render one client-only tick (`mounted` state set in a `useEffect`, with a targeted `eslint-disable` for `react-hooks/set-state-in-effect`) since the theme-setting inline script `next-themes` injects runs before hydration — rendering the real button immediately would mismatch the server's output.
+- Real-time updates done (see Tech stack above for the design). Verified with two separate logged-in browser contexts open on `/pallets` at once: a pallet status change made by a third party (neither open tab) appeared in both, live, with no manual reload — confirming the full path (broadcast → browser WebSocket → `router.refresh()` → re-render) actually works, not just that the pieces exist individually.
 - Outbound pallet board + floor map view were built, then reverted (see Deferred/reverted above) — not present in the current codebase.
 - Auth done: frontend password gate + backend API key (see Tech stack above). Frontend routes live under `app/(app)/` (has the nav + logout) as a route group separate from `app/login/` (no nav) — needed because rendering the logout button unconditionally on `/login` created a real bug (an ambiguous second `type="submit"` button on the page), not just a cosmetic issue.
 - Migrations via Alembic (`backend/alembic/`), replacing the earlier manual-`ALTER TABLE` approach (previously needed twice, for `pallets.status` and `orders.archived_at`, back when `Base.metadata.create_all()` was the only schema-creation mechanism — it only ever creates missing tables, never alters existing ones). `app/main.py` no longer calls `create_all()` at all; schema is entirely Alembic's responsibility now.
