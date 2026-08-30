@@ -10,12 +10,20 @@ type PalletRow = { key: number };
 export function NewOrderForm() {
   const [palletRows, setPalletRows] = useState<PalletRow[]>([{ key: 0 }]);
   const [nextKey, setNextKey] = useState(1);
+  const [palletFilled, setPalletFilled] = useState<Record<number, boolean>>({});
+  const [clientNameValue, setClientNameValue] = useState("");
+  const [slaDueDateValue, setSlaDueDateValue] = useState("");
+  const [orderNumberFilled, setOrderNumberFilled] = useState(false);
 
   const [{ formKey }, formAction, isPending] = useActionState(
     async (prev: { formKey: number }, formData: FormData) => {
       await createOrder(formData);
       setPalletRows([{ key: 0 }]);
       setNextKey(1);
+      setPalletFilled({});
+      setClientNameValue("");
+      setSlaDueDateValue("");
+      setOrderNumberFilled(false);
       return { formKey: prev.formKey + 1 };
     },
     { formKey: 0 }
@@ -30,7 +38,31 @@ export function NewOrderForm() {
     setPalletRows((rows) =>
       rows.length > 1 ? rows.filter((r) => r.key !== key) : rows
     );
+    setPalletFilled((filled) =>
+      Object.fromEntries(Object.entries(filled).filter(([k]) => k !== String(key)))
+    );
   }
+
+  function handlePalletValueChange(row: PalletRow, value: string) {
+    setPalletFilled((filled) => ({ ...filled, [row.key]: value.length > 0 }));
+
+    // Once someone starts typing in what is currently the last row, open a
+    // fresh empty one below it so they don't have to reach for "+ Add
+    // pallet" between every pallet. Only fires on the empty -> non-empty
+    // transition of the LAST row, so it never double-adds as they keep
+    // typing into that same (now not-last) row.
+    const isLastRow = palletRows[palletRows.length - 1]?.key === row.key;
+    if (isLastRow && value.length > 0) {
+      addPalletRow();
+    }
+  }
+
+  const anyPalletFilled = Object.values(palletFilled).some(Boolean);
+  const canSubmit =
+    clientNameValue.trim().length > 0 &&
+    orderNumberFilled &&
+    slaDueDateValue.length > 0 &&
+    anyPalletFilled;
 
   return (
     <form
@@ -44,6 +76,8 @@ export function NewOrderForm() {
         <input
           name="client_name"
           placeholder="Client name"
+          value={clientNameValue}
+          onChange={(e) => setClientNameValue(e.target.value)}
           required
           className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
         />
@@ -53,6 +87,7 @@ export function NewOrderForm() {
           digitCount={5}
           placeholder="Order number (e.g. ORD-00001)"
           required
+          onValueChange={(value) => setOrderNumberFilled(value.length > 0)}
           className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
         />
         <label className="flex flex-col gap-1 text-xs text-zinc-500">
@@ -60,6 +95,8 @@ export function NewOrderForm() {
           <input
             name="sla_due_date"
             type="date"
+            value={slaDueDateValue}
+            onChange={(e) => setSlaDueDateValue(e.target.value)}
             required
             className="rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
           />
@@ -74,7 +111,7 @@ export function NewOrderForm() {
               prefix="PLT-"
               digitCount={7}
               placeholder="Pallet ID (e.g. PLT-0000001)"
-              required
+              onValueChange={(value) => handlePalletValueChange(row, value)}
               className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
             />
             <RackLocationSelect
@@ -102,7 +139,7 @@ export function NewOrderForm() {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || !canSubmit}
         className="self-start rounded bg-black px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black"
       >
         {isPending ? "Logging..." : "Log order"}

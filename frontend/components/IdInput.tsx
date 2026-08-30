@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type IdInputProps = {
   name: string;
@@ -9,6 +9,7 @@ type IdInputProps = {
   placeholder?: string;
   required?: boolean;
   className?: string;
+  onValueChange?: (value: string) => void;
 };
 
 /**
@@ -27,11 +28,19 @@ export function IdInput({
   placeholder,
   required,
   className,
+  onValueChange,
 }: IdInputProps) {
   const [rawDigits, setRawDigits] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const value = rawDigits.length > 0 ? `${prefix}${rawDigits.padStart(digitCount, "0")}` : "";
+
+  useEffect(() => {
+    onValueChange?.(value);
+    // onValueChange intentionally omitted: only value changes should
+    // trigger this, not the parent handing down a new function identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   useLayoutEffect(() => {
     const el = inputRef.current;
