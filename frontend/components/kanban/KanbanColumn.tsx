@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { KanbanCard } from "./KanbanCard";
 import type { BoardPallet, PalletStatus } from "@/lib/types";
@@ -15,12 +16,18 @@ export function KanbanColumn({
   status,
   label,
   pallets,
+  collapsible,
 }: {
   status: PalletStatus;
   label: string;
   pallets: BoardPallet[];
+  collapsible?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  // Backlog tends to be the largest, least-actionable column, so it starts
+  // minimized to keep the board focused on staged/in-progress/completed -
+  // still a valid drop target while collapsed, just visually condensed.
+  const [expanded, setExpanded] = useState(!collapsible);
 
   return (
     <div
@@ -29,11 +36,26 @@ export function KanbanColumn({
     >
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">{label}</h3>
-        <span className="text-xs text-zinc-400">{pallets.length}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-400">{pallets.length}</span>
+          {collapsible && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+            >
+              {expanded ? "Hide" : "Show"}
+            </button>
+          )}
+        </div>
       </div>
-      {pallets.map((pallet) => (
-        <KanbanCard key={pallet.id} pallet={pallet} />
-      ))}
+      {expanded
+        ? pallets.map((pallet) => <KanbanCard key={pallet.id} pallet={pallet} />)
+        : pallets.length > 0 && (
+            <p className="text-xs text-zinc-400">
+              {pallets.length} pallet{pallets.length === 1 ? "" : "s"} hidden
+            </p>
+          )}
     </div>
   );
 }

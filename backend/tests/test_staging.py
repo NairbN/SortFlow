@@ -1,5 +1,7 @@
 from datetime import date, datetime, timezone
 
+from sqlalchemy import select
+
 from app.models.order import Order
 from app.models.pallet import Pallet
 from app.staging import sync_staging
@@ -93,6 +95,50 @@ def test_no_active_orders_is_noop(db_session):
 
     db_session.refresh(pallet)
     assert pallet.status == "backlog"
+
+
+def test_next_order_stages_once_top_order_is_fully_drained(db_session):
+    order_a = make_order(db_session, position=0)
+    order_b = make_order(db_session, position=1)
+    # order_a has no backlog/staged pallets left - both already moved on.
+    make_pallet(db_session, order_a, pallet_id="PLT-0000001", status="in_progress")
+    make_pallet(db_session, order_a, pallet_id="PLT-0000002", status="completed")
+    pallet_b = make_pallet(db_session, order_b, pallet_id="PLT-0000003")
+
+    sync_staging(db_session)
+
+    db_session.refresh(pallet_b)
+    assert pallet_b.status == "staged"
+
+
+def test_pallet_returning_to_staged_reclaims_current_order_and_reverts_next(
+    db_session,
+):
+    order_a = make_order(db_session, position=0)
+    order_b = make_order(db_session, position=1)
+    make_pallet(db_session, order_a, pallet_id="PLT-0000001", status="in_progress")
+    pallet_b = make_pallet(db_session, order_b, pallet_id="PLT-0000002")
+
+    # order_a is fully drained (its one pallet is in_progress), so order_b
+    # becomes current and gets staged.
+    sync_staging(db_session)
+    db_session.refresh(pallet_b)
+    assert pallet_b.status == "staged"
+
+    # A sorter drags order_a's pallet back into "staged" - order_a is
+    # current again, so order_b's lookahead staging should revert.
+    order_a_pallet = db_session.scalars(
+        select(Pallet).where(Pallet.order_id == order_a.id)
+    ).first()
+    order_a_pallet.status = "staged"
+    db_session.commit()
+
+    sync_staging(db_session)
+
+    db_session.refresh(order_a_pallet)
+    db_session.refresh(pallet_b)
+    assert order_a_pallet.status == "staged"
+    assert pallet_b.status == "backlog"
 
 
 def test_archived_orders_are_ignored_for_top_selection(db_session):

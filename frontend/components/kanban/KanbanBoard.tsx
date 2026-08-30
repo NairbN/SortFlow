@@ -62,6 +62,7 @@ export function KanbanBoard({ pallets }: { pallets: BoardPallet[] }) {
             status={col.status}
             label={col.label}
             pallets={optimisticPallets.filter((p) => p.status === col.status)}
+            collapsible={col.status === "backlog"}
           />
         ))}
       </div>
