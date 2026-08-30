@@ -95,6 +95,51 @@ def test_reorder_to_top_and_bottom(client):
     assert to_bottom["position"] == a["position"] + 1
 
 
+def test_update_order_success(client):
+    order = create_order(client).json()
+    res = client.patch(
+        f"/orders/{order['id']}",
+        json={
+            "client_name": "Globex",
+            "order_number": "ORD-00002",
+            "sla_due_date": "2026-03-15",
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["client_name"] == "Globex"
+    assert body["order_number"] == "ORD-00002"
+    assert body["sla_due_date"] == "2026-03-15"
+    # Editing order fields shouldn't touch position or pallets.
+    assert body["position"] == order["position"]
+    assert len(body["pallets"]) == len(order["pallets"])
+
+
+def test_update_order_rejects_malformed_order_number(client):
+    order = create_order(client).json()
+    res = client.patch(
+        f"/orders/{order['id']}",
+        json={
+            "client_name": "Globex",
+            "order_number": "not-a-valid-format",
+            "sla_due_date": "2026-03-15",
+        },
+    )
+    assert res.status_code == 422
+
+
+def test_update_missing_order_404(client):
+    res = client.patch(
+        "/orders/999999",
+        json={
+            "client_name": "Globex",
+            "order_number": "ORD-00002",
+            "sla_due_date": "2026-03-15",
+        },
+    )
+    assert res.status_code == 404
+
+
 def test_delete_order_cascades_pallets(client, db_session):
     from app.models.pallet import Pallet
 

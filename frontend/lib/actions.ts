@@ -42,6 +42,42 @@ export async function createOrder(formData: FormData) {
   refresh();
 }
 
+export async function updateOrder(orderId: number, formData: FormData) {
+  const clientName = String(formData.get("client_name") ?? "").trim();
+  const orderNumber = String(formData.get("order_number") ?? "").trim();
+  const slaDueDate = String(formData.get("sla_due_date") ?? "");
+
+  if (!clientName || !orderNumber || !slaDueDate) {
+    throw new Error("Missing required fields");
+  }
+
+  const res = await backendFetch(`/orders/${orderId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_name: clientName,
+      order_number: orderNumber,
+      sla_due_date: slaDueDate,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to update order: ${res.status}`);
+  }
+
+  refresh();
+}
+
+export async function deleteOrder(orderId: number) {
+  const res = await backendFetch(`/orders/${orderId}`, { method: "DELETE" });
+
+  if (!res.ok) {
+    throw new Error(`Failed to delete order: ${res.status}`);
+  }
+
+  refresh();
+}
+
 export async function reorderOrder(
   orderId: number,
   previousOrderId: number | null,

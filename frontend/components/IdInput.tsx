@@ -10,6 +10,9 @@ type IdInputProps = {
   required?: boolean;
   className?: string;
   onValueChange?: (value: string) => void;
+  /** Pre-fills the field with an already-formatted value (e.g. "ORD-00001"),
+   * for editing an existing record rather than creating a new one. */
+  defaultValue?: string;
 };
 
 /**
@@ -29,8 +32,11 @@ export function IdInput({
   required,
   className,
   onValueChange,
+  defaultValue,
 }: IdInputProps) {
-  const [rawDigits, setRawDigits] = useState("");
+  const [rawDigits, setRawDigits] = useState(() =>
+    defaultValue ? defaultValue.replace(/\D/g, "").slice(-digitCount) : ""
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   const value = rawDigits.length > 0 ? `${prefix}${rawDigits.padStart(digitCount, "0")}` : "";

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.order import Order
 from app.models.pallet import Pallet
-from app.schemas.order import OrderCreate, OrderRead, OrderReorder
+from app.schemas.order import OrderCreate, OrderRead, OrderReorder, OrderUpdate
 from app.staging import sync_staging
 from app.ws import manager
 
@@ -39,6 +39,21 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
     sync_staging(db)
+    db.refresh(order)
+    manager.notify_changed()
+    return order
+
+@router.patch("/{order_id}", response_model=OrderRead)
+def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_db)):
+    order = db.get(Order, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.client_name = payload.client_name
+    order.order_number = payload.order_number
+    order.sla_due_date = payload.sla_due_date
+
+    db.commit()
     db.refresh(order)
     manager.notify_changed()
     return order

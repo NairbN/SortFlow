@@ -27,3 +27,9 @@ class OrderRead(BaseModel):
 class OrderReorder(BaseModel):
     previous_order_id: int | None = None
     next_order_id: int | None = None
+
+
+class OrderUpdate(BaseModel):
+    client_name: str
+    order_number: str = Field(pattern=r"^ORD-\d{5}$")
+    sla_due_date: date
