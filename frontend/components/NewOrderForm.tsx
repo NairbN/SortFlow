@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createOrder } from "@/lib/actions";
 import { IdInput } from "@/components/IdInput";
+import { CA_COMMODITY_FLOOR, RACK_LOCATIONS } from "@/lib/rackLocations";
 
 type PalletRow = { key: number };
 
@@ -76,11 +77,18 @@ export function NewOrderForm() {
               required
               className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
             />
-            <input
+            <select
               name="rack_location"
-              placeholder="Rack location (optional)"
+              defaultValue={CA_COMMODITY_FLOOR}
               className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-            />
+            >
+              <option value={CA_COMMODITY_FLOOR}>{CA_COMMODITY_FLOOR}</option>
+              {RACK_LOCATIONS.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={() => removePalletRow(row.key)}
