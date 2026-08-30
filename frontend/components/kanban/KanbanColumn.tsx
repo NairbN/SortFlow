@@ -51,10 +51,24 @@ export function KanbanColumn({
             <h3 className="truncate text-sm font-bold">{label}</h3>
           )}
         </div>
-        <span className="shrink-0 text-xs font-bold text-faint">{pallets.length}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs font-bold text-faint">{pallets.length}</span>
+          {/* Toggle lives in the header, not after the card list - Backlog
+              can hold dozens of pallets, and nobody should have to scroll
+              past all of them just to collapse it again. */}
+          {collapsible && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="rounded-full border border-border-strong bg-surface px-2.5 py-1 text-xs font-semibold text-muted hover:text-foreground"
+            >
+              {expanded ? "Hide" : "Show"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {expanded ? (
+      {expanded && (
         <div className="flex animate-fade-in-up flex-col gap-2.5">
           {pallets.length === 0 && !collapsible && (
             <div className="rounded-md border border-dashed border-border-strong py-7 text-center text-xs text-faint">
@@ -64,28 +78,7 @@ export function KanbanColumn({
           {pallets.map((pallet) => (
             <KanbanCard key={pallet.id} pallet={pallet} />
           ))}
-          {collapsible && (
-            <button
-              type="button"
-              onClick={() => setExpanded(false)}
-              className="mt-1 self-center rounded-full border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground"
-            >
-              Hide
-            </button>
-          )}
         </div>
-      ) : (
-        collapsible && (
-          <div className="flex animate-fade-in-up flex-col items-center gap-2.5 pt-1.5">
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              className="rounded-full border border-border-strong bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:text-foreground"
-            >
-              Show
-            </button>
-          </div>
-        )
       )}
     </div>
   );
