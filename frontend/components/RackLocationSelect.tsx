@@ -100,7 +100,7 @@ export function RackLocationSelect({
         <ul
           id={`${name}-listbox`}
           role="listbox"
-          className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded border border-zinc-300 bg-white text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+          className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-surface text-sm shadow-pop"
         >
           {filtered.map((opt, i) => (
             <li
@@ -113,9 +113,7 @@ export function RackLocationSelect({
               }}
               onMouseEnter={() => setHighlight(i)}
               className={`cursor-pointer px-3 py-1.5 ${
-                i === highlight
-                  ? "bg-blue-100 dark:bg-blue-900"
-                  : "hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                i === highlight ? "bg-accent-tint text-accent-tint-text" : "hover:bg-surface-2"
               }`}
             >
               {opt}

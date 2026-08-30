@@ -17,7 +17,7 @@ type PalletRow = {
 };
 
 const fieldClassName =
-  "rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-800";
+  "rounded-md border border-border-strong bg-surface-2 px-3 py-1.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
 
 export function EditOrderForm({
   order,
@@ -143,7 +143,7 @@ export function EditOrderForm({
               <button
                 type="button"
                 onClick={() => removePalletRow(row.key)}
-                className="flex w-11 shrink-0 items-center justify-center text-zinc-400 hover:text-red-500"
+                className="flex w-11 shrink-0 items-center justify-center text-faint hover:text-danger"
                 aria-label="Remove pallet"
               >
                 &times;
@@ -154,25 +154,25 @@ export function EditOrderForm({
         <button
           type="button"
           onClick={addPalletRow}
-          className="self-start text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="self-start text-xs font-semibold text-accent hover:text-accent-hover"
         >
           + Add pallet
         </button>
       </div>
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={isSaving || !canSubmit}
-          className="rounded bg-black px-3 py-1 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-accent-fg hover:bg-accent-hover disabled:opacity-50"
         >
           {isSaving ? "Saving..." : "Save"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-700"
+          className="rounded-md border border-border-strong px-3 py-1.5 text-sm font-semibold"
         >
           Cancel
         </button>

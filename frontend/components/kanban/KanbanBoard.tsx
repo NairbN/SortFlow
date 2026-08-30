@@ -55,7 +55,12 @@ export function KanbanBoard({ pallets }: { pallets: BoardPallet[] }) {
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Flex, not grid - Backlog's width animates on collapse/expand
+          (see KanbanColumn.tsx) and its siblings (flex-1) need to reflow
+          into the freed space every frame of that transition. Stacks to a
+          plain full-width column on mobile, where the width animation
+          doesn't apply (see KanbanColumn.tsx for why). */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         {COLUMNS.map((col) => (
           <KanbanColumn
             key={col.status}

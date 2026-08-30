@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { daysUntilDue, dueLabel, dueLabelClass } from "@/lib/dates";
+import { daysUntilDue, dueLabel, dueBadgeClass } from "@/lib/dates";
 import { useToday } from "@/lib/TodayContext";
 import { deleteOrder } from "@/lib/actions";
 import { OrderMenu } from "@/components/OrderMenu";
@@ -30,11 +30,11 @@ export function OrderCard({ order }: { order: Order }) {
   const isOverdue = daysLeft < 0;
   const isUrgent = daysLeft >= 0 && daysLeft <= 2;
 
-  const borderClass = isOverdue
-    ? "border-red-400 dark:border-red-500"
+  const accentBorderClass = isOverdue
+    ? "border-l-danger"
     : isUrgent
-      ? "border-amber-400 dark:border-amber-500"
-      : "border-zinc-200 dark:border-zinc-700";
+      ? "border-l-warning"
+      : "border-l-transparent";
 
   // While editing, the card shouldn't be draggable at all - useSortable's
   // own `disabled` option above stops drag activation, and not spreading
@@ -47,7 +47,7 @@ export function OrderCard({ order }: { order: Order }) {
       ref={setNodeRef}
       style={style}
       {...dragProps}
-      className={`flex items-center justify-between rounded-lg border bg-white p-4 shadow-sm dark:bg-zinc-900 ${borderClass} ${isDragging ? "opacity-50" : ""} ${isEditing ? "" : "cursor-grab active:cursor-grabbing"}`}
+      className={`flex items-center gap-4 rounded-lg border border-border border-l-[3px] ${accentBorderClass} bg-surface p-5 shadow-card ${isDragging ? "opacity-50" : ""} ${isEditing ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
       {isEditing ? (
         <EditOrderForm
@@ -57,20 +57,25 @@ export function OrderCard({ order }: { order: Order }) {
         />
       ) : (
         <>
-          <div>
-            <p className="font-semibold">{order.client_name}</p>
-            <p className="text-sm text-zinc-500">Order #{order.order_number}</p>
-            <p className="text-sm text-zinc-500">
-              {order.pallets.length} pallet{order.pallets.length === 1 ? "" : "s"}
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor" className="shrink-0 text-faint opacity-60">
+            <circle cx="3" cy="3" r="1.6" /><circle cx="9" cy="3" r="1.6" />
+            <circle cx="3" cy="10" r="1.6" /><circle cx="9" cy="10" r="1.6" />
+            <circle cx="3" cy="17" r="1.6" /><circle cx="9" cy="17" r="1.6" />
+          </svg>
+          <div className="flex-1">
+            <p className="font-bold">{order.client_name}</p>
+            <p className="text-sm text-muted">
+              Order #{order.order_number} &middot; {order.pallets.length} pallet
+              {order.pallets.length === 1 ? "" : "s"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-right">
-              <p className="text-sm font-medium">{order.sla_due_date}</p>
-              <p className={`text-xs ${dueLabelClass(daysLeft)}`}>{dueLabel(daysLeft)}</p>
-            </div>
-            <OrderMenu onEdit={() => setIsEditing(true)} onDelete={() => deleteOrder(order.id)} />
+          <div className="flex flex-col items-end gap-1.5">
+            <span className="text-sm font-semibold text-muted">{order.sla_due_date}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${dueBadgeClass(daysLeft)}`}>
+              {dueLabel(daysLeft)}
+            </span>
           </div>
+          <OrderMenu onEdit={() => setIsEditing(true)} onDelete={() => deleteOrder(order.id)} />
         </>
       )}
     </li>

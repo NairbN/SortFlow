@@ -10,8 +10,8 @@ export function dueLabel(daysLeft: number) {
   return `${daysLeft}d left`;
 }
 
-export function dueLabelClass(daysLeft: number) {
-  if (daysLeft < 0) return "text-red-600 dark:text-red-400";
-  if (daysLeft <= 2) return "text-amber-600 dark:text-amber-400";
-  return "text-zinc-400";
+export function dueBadgeClass(daysLeft: number) {
+  if (daysLeft < 0) return "bg-danger-tint text-danger";
+  if (daysLeft <= 2) return "bg-warning-tint text-warning-text";
+  return "bg-surface-2 text-muted";
 }

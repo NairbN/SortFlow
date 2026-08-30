@@ -49,7 +49,7 @@ export function OrderMenu({
         aria-label="Order actions"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="-m-2 flex h-9 w-9 items-center justify-center rounded p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+        className="-m-2 flex h-9 w-9 items-center justify-center rounded-sm p-2 text-faint hover:text-foreground"
       >
         <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
           <circle cx="12" cy="6" r="1.75" />
@@ -60,24 +60,24 @@ export function OrderMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-10 mt-1 w-40 rounded border border-zinc-200 bg-white py-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+          className="absolute right-0 z-10 mt-1 w-40 rounded-md border border-border bg-surface py-1 text-sm shadow-pop"
         >
           {confirmingDelete ? (
             <div className="px-3 py-2">
-              <p className="mb-2 text-xs text-zinc-500">Delete this order?</p>
+              <p className="mb-2 text-xs text-muted">Delete this order?</p>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={isDeleting}
-                  className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+                  className="rounded-sm bg-danger px-2 py-1 text-xs font-semibold text-danger-fg disabled:opacity-50"
                 >
                   {isDeleting ? "Deleting..." : "Delete"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(false)}
-                  className="rounded border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-600"
+                  className="rounded-sm border border-border-strong px-2 py-1 text-xs"
                 >
                   Cancel
                 </button>
@@ -92,7 +92,7 @@ export function OrderMenu({
                   setOpen(false);
                   onEdit();
                 }}
-                className="block w-full px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                className="block w-full px-3 py-2 text-left hover:bg-surface-2"
               >
                 Edit
               </button>
@@ -100,7 +100,7 @@ export function OrderMenu({
                 type="button"
                 role="menuitem"
                 onClick={() => setConfirmingDelete(true)}
-                className="block w-full px-3 py-2 text-left text-red-600 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                className="block w-full px-3 py-2 text-left text-danger hover:bg-surface-2"
               >
                 Delete
               </button>

@@ -12,22 +12,21 @@ export function LoginForm() {
   return (
     <form
       action={formAction}
-      className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+      className="flex w-full flex-col gap-4 rounded-lg border border-border bg-surface p-7 shadow-pop"
     >
-      <h1 className="text-lg font-semibold">SortFlow</h1>
-      <p className="text-sm text-zinc-500">
-        Enter the shared team password to continue.
-      </p>
-      <input
-        type="password"
-        name="password"
-        placeholder="Password"
-        required
-        autoFocus
-        className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-      />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-muted">Password</span>
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          required
+          autoFocus
+          className="rounded-md border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </label>
       {state.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-danger">
           {state.rateLimited
             ? "Too many attempts. Wait a minute and try again."
             : "Incorrect password."}
@@ -36,7 +35,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+        className="rounded-md bg-accent px-4 py-2.5 text-sm font-bold text-accent-fg shadow-pop transition-colors hover:bg-accent-hover disabled:opacity-50"
       >
         {isPending ? "Checking..." : "Log in"}
       </button>

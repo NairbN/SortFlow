@@ -64,69 +64,81 @@ export function NewOrderForm() {
     slaDueDateValue.length > 0 &&
     anyPalletFilled;
 
+  const fieldClassName =
+    "rounded-md border border-border-strong bg-surface-2 px-3.5 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
+
   return (
     <form
       key={formKey}
       action={formAction}
-      className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+      className="flex flex-col gap-4.5 rounded-lg border border-border bg-surface p-6 shadow-card"
     >
-      <h2 className="font-semibold">Log a new order</h2>
+      <h2 className="text-[15px] font-bold">Log a new order</h2>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <input
-          name="client_name"
-          placeholder="Client name"
-          value={clientNameValue}
-          onChange={(e) => setClientNameValue(e.target.value)}
-          required
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-        />
-        <IdInput
-          name="order_number"
-          prefix="ORD-"
-          digitCount={5}
-          placeholder="Order number (e.g. ORD-00001)"
-          required
-          onValueChange={(value) => setOrderNumberFilled(value.length > 0)}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-        />
-        <label className="flex flex-col gap-1 text-xs text-zinc-500">
-          SLA due date
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-muted">Client name</span>
+          <input
+            name="client_name"
+            placeholder="Client name"
+            value={clientNameValue}
+            onChange={(e) => setClientNameValue(e.target.value)}
+            required
+            className={fieldClassName}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-muted">Order number</span>
+          <IdInput
+            name="order_number"
+            prefix="ORD-"
+            digitCount={5}
+            placeholder="Order number (e.g. ORD-00001)"
+            required
+            onValueChange={(value) => setOrderNumberFilled(value.length > 0)}
+            className={fieldClassName}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-muted">SLA due date</span>
           <input
             name="sla_due_date"
             type="date"
             value={slaDueDateValue}
             onChange={(e) => setSlaDueDateValue(e.target.value)}
             required
-            className="rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            className={fieldClassName}
           />
         </label>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {palletRows.map((row) => (
-          <div key={row.key} className="flex flex-col gap-2 sm:flex-row">
-            <IdInput
-              name="pallet_id"
-              prefix="PLT-"
-              digitCount={7}
-              placeholder="Pallet ID (e.g. PLT-0000001)"
-              onValueChange={(value) => handlePalletValueChange(row, value)}
-              className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800 sm:flex-1"
-            />
+          <div key={row.key} className="flex flex-col gap-2.5 sm:flex-row">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-xs font-semibold text-muted">Pallet ID</span>
+              <IdInput
+                name="pallet_id"
+                prefix="PLT-"
+                digitCount={7}
+                placeholder="Pallet ID (e.g. PLT-0000001)"
+                onValueChange={(value) => handlePalletValueChange(row, value)}
+                className={`w-full ${fieldClassName}`}
+              />
+            </label>
             {/* Rack select + remove button stay paired on their own row so
                 the rack combobox always has enough width to show a full
                 rack code (e.g. "CA Commodity Floor") instead of getting
                 squeezed down to a sliver next to the pallet ID field. */}
-            <div className="flex gap-2 sm:w-64">
-              <RackLocationSelect
-                name="rack_location"
-                className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-              />
+            <div className="flex gap-2.5 sm:w-64">
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-muted">Rack location</span>
+                <RackLocationSelect name="rack_location" className={`w-full ${fieldClassName}`} />
+              </label>
               <button
                 type="button"
                 onClick={() => removePalletRow(row.key)}
-                className="flex w-11 shrink-0 items-center justify-center text-zinc-400 hover:text-red-500"
+                className="mt-[22px] flex h-[38px] w-11 shrink-0 items-center justify-center text-faint hover:text-danger"
                 aria-label="Remove pallet"
               >
                 &times;
@@ -137,7 +149,7 @@ export function NewOrderForm() {
         <button
           type="button"
           onClick={addPalletRow}
-          className="self-start text-sm text-blue-600 hover:underline dark:text-blue-400"
+          className="self-start text-sm font-semibold text-accent hover:text-accent-hover"
         >
           + Add pallet
         </button>
@@ -146,7 +158,7 @@ export function NewOrderForm() {
       <button
         type="submit"
         disabled={isPending || !canSubmit}
-        className="self-start rounded bg-black px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+        className="self-start rounded-md bg-accent px-5 py-2.5 text-sm font-bold text-accent-fg shadow-card transition-colors hover:bg-accent-hover disabled:opacity-50"
       >
         {isPending ? "Logging..." : "Log order"}
       </button>
