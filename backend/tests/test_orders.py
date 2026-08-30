@@ -21,6 +21,18 @@ def test_create_order_success(client):
     assert body["pallets"][0]["status"] == "staged"
 
 
+def test_create_order_rejects_malformed_order_number(client):
+    for bad in ["ORD-1", "ORD-000001", "ord-00001", "00001", "ORD-0000a"]:
+        res = create_order(client, order_number=bad)
+        assert res.status_code == 422, bad
+
+
+def test_create_order_rejects_malformed_pallet_id(client):
+    for bad in ["PLT-1", "PLT-00000001", "plt-0000001", "0000001", "PLT-000000a"]:
+        res = create_order(client, pallet_id=bad)
+        assert res.status_code == 422, bad
+
+
 def test_create_order_requires_at_least_one_pallet(client):
     res = client.post(
         "/orders",

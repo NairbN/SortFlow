@@ -1,13 +1,13 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 PalletStatus = Literal["backlog", "staged", "in_progress", "completed"]
 
 
 class PalletCreate(BaseModel):
-    pallet_id: str
+    pallet_id: str = Field(pattern=r"^PLT-\d{7}$")
     rack_location: str | None = None
 
 

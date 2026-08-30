@@ -7,7 +7,7 @@ from app.schemas.pallet import PalletCreate, PalletRead
 
 class OrderCreate(BaseModel):
     client_name: str
-    order_number: str
+    order_number: str = Field(pattern=r"^ORD-\d{5}$")
     sla_due_date: date
     pallets: list[PalletCreate] = Field(min_length=1)
 

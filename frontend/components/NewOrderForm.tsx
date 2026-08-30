@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createOrder } from "@/lib/actions";
+import { IdInput } from "@/components/IdInput";
 
 type PalletRow = { key: number };
 
@@ -45,8 +46,10 @@ export function NewOrderForm() {
           required
           className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
         />
-        <input
+        <IdInput
           name="order_number"
+          prefix="ORD-"
+          digitCount={5}
           placeholder="Order number (e.g. ORD-00001)"
           required
           className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
@@ -65,8 +68,10 @@ export function NewOrderForm() {
       <div className="flex flex-col gap-2">
         {palletRows.map((row) => (
           <div key={row.key} className="flex gap-2">
-            <input
+            <IdInput
               name="pallet_id"
+              prefix="PLT-"
+              digitCount={7}
               placeholder="Pallet ID (e.g. PLT-0000001)"
               required
               className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
