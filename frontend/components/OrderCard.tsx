@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { daysUntilDue, dueLabel, dueLabelClass } from "@/lib/dates";
+import { useToday } from "@/lib/TodayContext";
 import type { Order } from "@/lib/types";
 
 export function OrderCard({ order }: { order: Order }) {
@@ -14,7 +15,8 @@ export function OrderCard({ order }: { order: Order }) {
     transition,
   };
 
-  const daysLeft = daysUntilDue(order.sla_due_date);
+  const today = useToday();
+  const daysLeft = daysUntilDue(order.sla_due_date, today);
   const isOverdue = daysLeft < 0;
   const isUrgent = daysLeft >= 0 && daysLeft <= 2;
 

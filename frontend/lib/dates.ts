@@ -1,8 +1,7 @@
-export function daysUntilDue(dateStr: string) {
+export function daysUntilDue(dateStr: string, today: string) {
   const due = new Date(`${dateStr}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  const todayDate = new Date(`${today}T00:00:00`);
+  return Math.round((due.getTime() - todayDate.getTime()) / 86_400_000);
 }
 
 export function dueLabel(daysLeft: number) {

@@ -3,6 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { daysUntilDue, dueLabel, dueLabelClass } from "@/lib/dates";
+import { useToday } from "@/lib/TodayContext";
 import type { BoardPallet } from "@/lib/types";
 
 export function KanbanCard({ pallet }: { pallet: BoardPallet }) {
@@ -13,7 +14,8 @@ export function KanbanCard({ pallet }: { pallet: BoardPallet }) {
     transform: CSS.Translate.toString(transform),
   };
 
-  const daysLeft = daysUntilDue(pallet.order.sla_due_date);
+  const today = useToday();
+  const daysLeft = daysUntilDue(pallet.order.sla_due_date, today);
 
   return (
     <div

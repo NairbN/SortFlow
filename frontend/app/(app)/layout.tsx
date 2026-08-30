@@ -2,10 +2,15 @@ import Link from "next/link";
 import { logout } from "@/lib/auth-actions";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RealtimeListener } from "@/components/RealtimeListener";
+import { TodayProvider } from "@/lib/TodayContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  // Computed once here (server-side) rather than in each card - see
+  // TodayContext.tsx for why that matters for hydration correctness.
+  const today = new Date().toISOString().slice(0, 10);
+
   return (
-    <>
+    <TodayProvider today={today}>
       <RealtimeListener />
       <nav className="flex items-center justify-between gap-4 border-b border-zinc-200 px-6 py-3 text-sm font-medium dark:border-zinc-800">
         <div className="flex gap-4">
@@ -29,6 +34,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
       {children}
-    </>
+    </TodayProvider>
   );
 }
