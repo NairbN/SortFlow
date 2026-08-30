@@ -8,7 +8,7 @@ Right now, one person on the sort team manually tracks incoming orders and their
 
 It's a solo portfolio project built against a real workplace's actual workflow (seeded/fake data only, no real company data), with the eventual goal of pitching something like it internally once it's proven out. It's explicitly an **accessory app** — it complements the sort team's existing scanning/tracking system rather than replacing it, and it's scoped to the sort team only (not the downstream audit team).
 
-**Live demo:** [frontend-kappa-eight-94.vercel.app](https://frontend-kappa-eight-94.vercel.app) — password `PaloAlto`. Seeded/fake data only.
+**Live demo:** [sortflow-paloalto.vercel.app](https://sortflow-paloalto.vercel.app) — password `PaloAlto`. Seeded/fake data only.
 
 ## See it in action
 
