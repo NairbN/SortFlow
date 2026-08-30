@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logout } from "@/lib/auth-actions";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,14 +14,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             Pallet Board
           </Link>
         </div>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="text-zinc-400 hover:text-zinc-600 hover:underline dark:hover:text-zinc-200"
-          >
-            Log out
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          <form action={logout}>
+            <button
+              type="submit"
+              className="text-zinc-400 hover:text-zinc-600 hover:underline dark:hover:text-zinc-200"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
       </nav>
       {children}
     </>
