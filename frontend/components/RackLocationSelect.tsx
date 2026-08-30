@@ -19,12 +19,17 @@ const OPTIONS: string[] = [CA_COMMODITY_FLOOR, ...RACK_LOCATIONS];
 export function RackLocationSelect({
   name,
   className,
+  defaultValue,
 }: {
   name: string;
   className?: string;
+  /** Pre-fills the field for editing an existing pallet's rack location
+   * (falls back to the shared floor default when creating a new one). */
+  defaultValue?: string;
 }) {
-  const [selected, setSelected] = useState(CA_COMMODITY_FLOOR);
-  const [query, setQuery] = useState(CA_COMMODITY_FLOOR);
+  const initial = defaultValue ?? CA_COMMODITY_FLOOR;
+  const [selected, setSelected] = useState(initial);
+  const [query, setQuery] = useState(initial);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);

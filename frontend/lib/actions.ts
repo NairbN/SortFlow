@@ -46,8 +46,23 @@ export async function updateOrder(orderId: number, formData: FormData) {
   const clientName = String(formData.get("client_name") ?? "").trim();
   const orderNumber = String(formData.get("order_number") ?? "").trim();
   const slaDueDate = String(formData.get("sla_due_date") ?? "");
+  const palletIds = formData.getAll("pallet_id").map((v) => String(v).trim());
+  const rackLocations = formData
+    .getAll("rack_location")
+    .map((v) => String(v).trim());
+  // "" for a pallet being added, the existing pallet's id otherwise - see
+  // EditOrderForm.tsx's PalletRow type.
+  const rowIds = formData.getAll("pallet_row_id").map((v) => String(v).trim());
 
-  if (!clientName || !orderNumber || !slaDueDate) {
+  const pallets = palletIds
+    .map((palletId, i) => ({
+      id: rowIds[i] ? Number(rowIds[i]) : null,
+      pallet_id: palletId,
+      rack_location: rackLocations[i] || null,
+    }))
+    .filter((p) => p.pallet_id.length > 0);
+
+  if (!clientName || !orderNumber || !slaDueDate || pallets.length === 0) {
     throw new Error("Missing required fields");
   }
 
@@ -58,6 +73,7 @@ export async function updateOrder(orderId: number, formData: FormData) {
       client_name: clientName,
       order_number: orderNumber,
       sla_due_date: slaDueDate,
+      pallets,
     }),
   });
 

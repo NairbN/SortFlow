@@ -29,7 +29,16 @@ class OrderReorder(BaseModel):
     next_order_id: int | None = None
 
 
+class OrderPalletUpdate(PalletCreate):
+    # None = a new pallet to add; set = update the existing pallet with this
+    # id (any id that isn't one of the order's current pallets is treated as
+    # new, same as None). A pallet whose id isn't present in the submitted
+    # list at all gets deleted - see update_order() in routers/orders.py.
+    id: int | None = None
+
+
 class OrderUpdate(BaseModel):
     client_name: str
     order_number: str = Field(pattern=r"^ORD-\d{5}$")
     sla_due_date: date
+    pallets: list[OrderPalletUpdate] = Field(min_length=1)

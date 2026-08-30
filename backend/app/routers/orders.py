@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -53,7 +55,49 @@ def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_
     order.order_number = payload.order_number
     order.sla_due_date = payload.sla_due_date
 
+    # Diff the submitted pallet list against what the order currently has:
+    # matched ids get updated in place, unmatched submitted rows are new
+    # pallets, and existing pallets absent from the submitted list are
+    # removed (cascade="all, delete-orphan" on Order.pallets handles the
+    # actual delete once they're dropped from the collection).
+    existing_by_id = {p.id: p for p in order.pallets}
+    submitted_ids = {p.id for p in payload.pallets if p.id in existing_by_id}
+
+    order.pallets[:] = [p for p in order.pallets if p.id in submitted_ids]
+
+    for p in payload.pallets:
+        if p.id in existing_by_id and p.id in submitted_ids:
+            pallet = existing_by_id[p.id]
+            pallet.pallet_id = p.pallet_id
+            pallet.rack_location = p.rack_location
+        else:
+            order.pallets.append(Pallet(pallet_id=p.pallet_id, rack_location=p.rack_location))
+
     db.commit()
+    db.refresh(order)
+
+    # update_pallet_status archives an order the moment its last pallet
+    # reaches "completed" (see routers/pallets.py); adding/removing pallets
+    # here can just as easily break or restore that condition (e.g. adding
+    # a fresh backlog pallet to an order that had been archived), so the
+    # archived_at invariant needs to be re-checked here too rather than only
+    # ever being set by the status-update path.
+    remaining_incomplete = db.scalar(
+        select(Pallet.id)
+        .where(Pallet.order_id == order.id)
+        .where(Pallet.status != "completed")
+        .limit(1)
+    )
+    if remaining_incomplete is not None:
+        order.archived_at = None
+    elif order.archived_at is None:
+        order.archived_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(order)
+
+    # Adding/removing pallets can change whether this order is "current"
+    # (see staging.py) - unlike a plain field edit, this needs a re-sync.
+    sync_staging(db)
     db.refresh(order)
     manager.notify_changed()
     return order
