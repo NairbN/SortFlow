@@ -13,6 +13,10 @@ export function OrderCard({ order }: { order: Order }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    // Without this, touch browsers treat a drag gesture as a page scroll
+    // instead of handing it to dnd-kit's PointerSensor - dnd-kit only sets
+    // this automatically on its own DragOverlay, which this app doesn't use.
+    touchAction: "none",
   };
 
   const today = useToday();

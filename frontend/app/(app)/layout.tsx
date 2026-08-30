@@ -14,10 +14,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <RealtimeListener />
       <nav className="flex items-center justify-between gap-4 border-b border-zinc-200 px-6 py-3 text-sm font-medium dark:border-zinc-800">
         <div className="flex gap-4">
-          <Link href="/" className="hover:underline">
+          {/* -my-3 py-3 expands the tap target to the full nav-bar height
+              without changing the visible row height - the negative margin
+              cancels the padding's effect on surrounding layout. */}
+          <Link href="/" className="-my-3 flex items-center py-3 hover:underline">
             SLA Queue
           </Link>
-          <Link href="/pallets" className="hover:underline">
+          <Link href="/pallets" className="-my-3 flex items-center py-3 hover:underline">
             Pallet Board
           </Link>
         </div>
@@ -26,7 +29,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <form action={logout}>
             <button
               type="submit"
-              className="text-zinc-400 hover:text-zinc-600 hover:underline dark:hover:text-zinc-200"
+              className="-my-3 flex items-center py-3 text-zinc-400 hover:text-zinc-600 hover:underline dark:hover:text-zinc-200"
             >
               Log out
             </button>

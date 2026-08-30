@@ -39,10 +39,14 @@ export function KanbanColumn({
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-400">{pallets.length}</span>
           {collapsible && (
+            // -m-2 p-2 expands the tap target well beyond the visible text
+            // without shifting surrounding layout (the negative margin
+            // cancels the padding's footprint) - important on a small
+            // secondary control like this one.
             <button
               type="button"
               onClick={() => setExpanded((e) => !e)}
-              className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              className="-m-2 p-2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
             >
               {expanded ? "Hide" : "Show"}
             </button>

@@ -105,27 +105,33 @@ export function NewOrderForm() {
 
       <div className="flex flex-col gap-2">
         {palletRows.map((row) => (
-          <div key={row.key} className="flex gap-2">
+          <div key={row.key} className="flex flex-col gap-2 sm:flex-row">
             <IdInput
               name="pallet_id"
               prefix="PLT-"
               digitCount={7}
               placeholder="Pallet ID (e.g. PLT-0000001)"
               onValueChange={(value) => handlePalletValueChange(row, value)}
-              className="flex-1 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+              className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800 sm:flex-1"
             />
-            <RackLocationSelect
-              name="rack_location"
-              className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-            />
-            <button
-              type="button"
-              onClick={() => removePalletRow(row.key)}
-              className="px-2 text-zinc-400 hover:text-red-500"
-              aria-label="Remove pallet"
-            >
-              &times;
-            </button>
+            {/* Rack select + remove button stay paired on their own row so
+                the rack combobox always has enough width to show a full
+                rack code (e.g. "CA Commodity Floor") instead of getting
+                squeezed down to a sliver next to the pallet ID field. */}
+            <div className="flex gap-2 sm:w-64">
+              <RackLocationSelect
+                name="rack_location"
+                className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
+              />
+              <button
+                type="button"
+                onClick={() => removePalletRow(row.key)}
+                className="flex w-11 shrink-0 items-center justify-center text-zinc-400 hover:text-red-500"
+                aria-label="Remove pallet"
+              >
+                &times;
+              </button>
+            </div>
           </div>
         ))}
         <button

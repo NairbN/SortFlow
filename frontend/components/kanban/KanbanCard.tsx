@@ -12,6 +12,10 @@ export function KanbanCard({ pallet }: { pallet: BoardPallet }) {
 
   const style = {
     transform: CSS.Translate.toString(transform),
+    // See OrderCard.tsx - dnd-kit only sets this automatically on its own
+    // DragOverlay, which this app doesn't use, so it's needed here directly
+    // for touch drags to not get eaten by the browser's scroll gesture.
+    touchAction: "none",
   };
 
   const today = useToday();
