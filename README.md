@@ -35,6 +35,8 @@ This is the whole loop end to end, captured against the app actually running (no
 
 Both pages talk to a FastAPI backend backed by Postgres, and both have been manually verified end-to-end in a real browser (not just unit-tested).
 
+**Light/dark mode** — a toggle in the nav and on the login page, defaulting to the system preference and persisting across visits.
+
 ## Tech stack
 
 | Layer | Choice |
